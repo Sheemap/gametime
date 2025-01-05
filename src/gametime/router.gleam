@@ -1,90 +1,48 @@
-import bison/bson
-import gametime/common/datastore
-import gametime/web
+import gametime/api
+import gametime/context.{type Context}
+import gametime/sse/connect
 import gleam/erlang/process
 import gleam/http.{Get}
+import gleam/http/request
+import gleam/http/response
 import gleam/option
 import gleam/result
-import gleam/string_builder
-import mungo
-import mungo/client
+import mist
 import simplifile
 import wisp.{type Request, type Response}
+import wisp/wisp_mist
 
-pub fn handle_request(req: Request, context: web.Context) -> Response {
-  use req <- web.middleware(req)
+fn middleware(
+  req: wisp.Request,
+  handle_request: fn(wisp.Request) -> wisp.Response,
+) -> wisp.Response {
+  let req = wisp.method_override(req)
+  use <- wisp.log_request(req)
+  use <- wisp.rescue_crashes
+  use req <- wisp.handle_head(req)
+  let assert Ok(priv_dir) = wisp.priv_directory("gametime")
+  use <- wisp.serve_static(req, "/", priv_dir <> "/static")
 
-  // Wisp doesn't have a special router abstraction, instead we recommend using
-  // regular old pattern matching. This is faster than a router, is type safe,
-  // and means you don't have to learn or be limited by a special DSL.
-  //
-  case wisp.path_segments(req) {
-    // This matches `/`.
-    [] -> home_page(req)
+  handle_request(req)
+}
 
-    ["rooms", room_id] -> join_room(req, room_id, context)
-
-    // This matches `/yuh`.
-    ["yuh"] -> yuh(req)
-
-    // This matches `/comments/:id`.
-    // The `id` segment is bound to a variable and passed to the handler.
-    ["comments", id] -> show_comment(req, id)
-
-    // This matches all other paths.
-    _ -> wisp.not_found()
+pub fn handle_request(
+  req: request.Request(mist.Connection),
+  ctx: Context,
+  secret_key_base: String,
+) -> response.Response(mist.ResponseData) {
+  case request.path_segments(req) {
+    ["sse", "connect", room_id] -> connect.handle(req, ctx, room_id)
+    _ -> wisp_mist.handler(handle_request_wisp(_, ctx), secret_key_base)(req)
   }
 }
 
-fn join_room(req: Request, room_id: String, context: web.Context) -> Response {
-  //datastore.get_room()
-
-  wisp.not_found()
-  //List(#(String
-}
-
-fn home_page(req: Request) -> Response {
-  // The home page can only be accessed via GET requests, so this middleware is
-  // used to return a 405: Method Not Allowed response for all other methods.
-  use <- wisp.require_method(req, Get)
-
-  let html =
-    string_builder.from_string(
-      "
-<!DOCTYPE html>
-<html>
-    <head>
-        <script src='https://unpkg.com/htmx.org@2.0.3' integrity='sha384-0895/pl2MU10Hqc6jd4RvrthNlDiE9U1tWmX7WRESftEDRosgxNsQG/Ze9YMRzHq' crossorigin='anonymous'></script>
-    </head>
-    <body>
-        <button hx-get='/yuh' hx-target='#content'>
-            Hello!
-        </button>
-        <div id='content'></div>
-    </body>
-</html>
-  ",
-    )
-
-  wisp.ok()
-  |> wisp.html_body(html)
-}
-
-fn yuh(req: Request) -> Response {
-  use <- wisp.require_method(req, Get)
-
-  let html = string_builder.from_string("yuh")
-  wisp.ok()
-  |> wisp.html_body(html)
-}
-
-fn show_comment(req: Request, id: String) -> Response {
-  use <- wisp.require_method(req, Get)
-
-  // The `id` path parameter has been passed to this function, so we could use
-  // it to look up a comment in a database.
-  // For now we'll just include in the response body.
-  let html = string_builder.from_string("Comment with id " <> id)
-  wisp.ok()
-  |> wisp.html_body(html)
+fn handle_request_wisp(req: Request, ctx: Context) -> Response {
+  use req <- middleware(req)
+  case wisp.path_segments(req) {
+    ["api", "v1", "create-room"] -> api.create_room(req, ctx)
+    ["api", "v1", "press-clock", clock_id] ->
+      api.press_clock(req, ctx, clock_id)
+    _ -> wisp.not_found() |> wisp.string_body("Not found")
+  }
 }

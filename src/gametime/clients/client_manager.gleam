@@ -12,7 +12,6 @@ pub type ClientMessage {
 }
 
 pub type ClientManagementMessage {
-  CreateRoom(id: String)
   Connect(id: String, room_id: String, Subject(ClientMessage))
   Disconnect(id: String, room_id: String)
   GetAllClients(subject: Subject(Dict(String, Subject(ClientMessage))))
@@ -38,35 +37,22 @@ fn loop(
 ) {
   case msg {
     Connect(id, room_id, subject) -> {
-      let room_dict =
-        state
-        |> dict.get(room_id)
-
-      let new_rooms = {
-        case room_dict {
-          Ok(rooms) -> rooms |> dict.insert(id, subject)
-          Error(_) -> dict.new() |> dict.insert(id, subject)
-        }
-      }
-
       let new_state =
         state
-        |> dict.insert(room_id, new_rooms)
+        |> dict.get(room_id)
+        |> result.unwrap(dict.new()) // Unwrap the result, or initialize a new empty dict
+        |> dict.insert(id, subject) // Insert our subject into the dict
+        |> dict.insert(state, room_id, _) // Update the original state
 
       actor.continue(new_state)
     }
     Disconnect(id, room_id) -> {
-      let room_dict =
+      let new_state =
         state
-        |> dict.get(room_id)
-        |> result.map(dict.delete(_, id))
-
-      let new_state = {
-        case room_dict {
-          Ok(rooms) -> state |> dict.insert(room_id, rooms)
-          Error(_) -> state
-        }
-      }
+        |> dict.get(room_id) // Get the room dict
+        |> result.map(dict.delete(_, id)) // If got a result, delete this ID from it
+        |> result.map(dict.insert(state, room_id, _)) // If success, update state with our new room
+        |> result.unwrap(state) // Unwrap the result, or revert back to original state if error
 
       actor.continue(new_state)
     }
@@ -86,9 +72,6 @@ fn loop(
       |> process.send(subject, _)
 
       actor.continue(state)
-    }
-    CreateRoom(room_id) -> {
-      state |> dict.insert(room_id, dict.new()) |> actor.continue
     }
     RoomChanged(room) -> {
       // TODO: Get current room state, broadcast to clients

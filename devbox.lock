@@ -1,6 +1,54 @@
 {
   "lockfile_version": "1",
   "packages": {
+    "docker@27.4.0": {
+      "last_modified": "2024-12-23T21:10:33Z",
+      "resolved": "github:NixOS/nixpkgs/de1864217bfa9b5845f465e771e0ecb48b30e02d#docker",
+      "source": "devbox-search",
+      "version": "27.4.0",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/7n11xx7xjvwkjs0q9xdh8lasdsgs6iv0-docker-27.4.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/7n11xx7xjvwkjs0q9xdh8lasdsgs6iv0-docker-27.4.0"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/jmh7hgixqg65gr67wrlxd09xbaaz7hg4-docker-27.4.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/jmh7hgixqg65gr67wrlxd09xbaaz7hg4-docker-27.4.0"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/bhcp0wh03qwc5miagw2n3dmmiprp374w-docker-27.4.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/bhcp0wh03qwc5miagw2n3dmmiprp374w-docker-27.4.0"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/p28dy32asfdvchsrzyqj8pn391vjas1n-docker-27.4.0",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/p28dy32asfdvchsrzyqj8pn391vjas1n-docker-27.4.0"
+        }
+      }
+    },
     "erlang_27@27.0.1": {
       "last_modified": "2024-10-18T06:41:56Z",
       "resolved": "github:NixOS/nixpkgs/c858402c2a629211153137fb8d39be9fde4694ff#erlang_27",
@@ -49,51 +97,51 @@
         }
       }
     },
-    "gleam@1.5.1": {
-      "last_modified": "2024-11-22T01:27:12Z",
-      "resolved": "github:NixOS/nixpkgs/8edf06bea5bcbee082df1b7369ff973b91618b8d#gleam",
+    "gleam@1.6.3": {
+      "last_modified": "2024-12-26T01:25:00Z",
+      "resolved": "github:NixOS/nixpkgs/16e046229f3b4f53257973a5532bcbb72457d2f2#gleam",
       "source": "devbox-search",
-      "version": "1.5.1",
+      "version": "1.6.3",
       "systems": {
         "aarch64-darwin": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/gsd9fr654227ad5z01wrxmyl7wfda1jg-gleam-1.5.1",
+              "path": "/nix/store/797gzv4dc2sg41vwscsrq9342xiblv90-gleam-1.6.3",
               "default": true
             }
           ],
-          "store_path": "/nix/store/gsd9fr654227ad5z01wrxmyl7wfda1jg-gleam-1.5.1"
+          "store_path": "/nix/store/797gzv4dc2sg41vwscsrq9342xiblv90-gleam-1.6.3"
         },
         "aarch64-linux": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/8m4s1kiw9lmxhq3vb42k0114gcwvrmbv-gleam-1.5.1",
+              "path": "/nix/store/2dfdxz0g548hphf9rxxdjq4smnin6fwm-gleam-1.6.3",
               "default": true
             }
           ],
-          "store_path": "/nix/store/8m4s1kiw9lmxhq3vb42k0114gcwvrmbv-gleam-1.5.1"
+          "store_path": "/nix/store/2dfdxz0g548hphf9rxxdjq4smnin6fwm-gleam-1.6.3"
         },
         "x86_64-darwin": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/rvn10qbv11f7x3cxd741vqh7iwvj9naa-gleam-1.5.1",
+              "path": "/nix/store/3l0bzw437g6sjm00cfrif40mmfxmpp8z-gleam-1.6.3",
               "default": true
             }
           ],
-          "store_path": "/nix/store/rvn10qbv11f7x3cxd741vqh7iwvj9naa-gleam-1.5.1"
+          "store_path": "/nix/store/3l0bzw437g6sjm00cfrif40mmfxmpp8z-gleam-1.6.3"
         },
         "x86_64-linux": {
           "outputs": [
             {
               "name": "out",
-              "path": "/nix/store/gynb1w1xha1ha7myg2i8fjhkkckzd47w-gleam-1.5.1",
+              "path": "/nix/store/69y1ywdr8n8lk7d9jzz9v7hfnxvr0ms8-gleam-1.6.3",
               "default": true
             }
           ],
-          "store_path": "/nix/store/gynb1w1xha1ha7myg2i8fjhkkckzd47w-gleam-1.5.1"
+          "store_path": "/nix/store/69y1ywdr8n8lk7d9jzz9v7hfnxvr0ms8-gleam-1.6.3"
         }
       }
     },

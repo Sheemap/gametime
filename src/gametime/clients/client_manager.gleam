@@ -40,19 +40,26 @@ fn loop(
       let new_state =
         state
         |> dict.get(room_id)
-        |> result.unwrap(dict.new()) // Unwrap the result, or initialize a new empty dict
-        |> dict.insert(id, subject) // Insert our subject into the dict
-        |> dict.insert(state, room_id, _) // Update the original state
+        |> result.unwrap(dict.new())
+        // Unwrap the result, or initialize a new empty dict
+        |> dict.insert(id, subject)
+        // Insert our subject into the dict
+        |> dict.insert(state, room_id, _)
+      // Update the original state
 
       actor.continue(new_state)
     }
     Disconnect(id, room_id) -> {
       let new_state =
         state
-        |> dict.get(room_id) // Get the room dict
-        |> result.map(dict.delete(_, id)) // If got a result, delete this ID from it
-        |> result.map(dict.insert(state, room_id, _)) // If success, update state with our new room
-        |> result.unwrap(state) // Unwrap the result, or revert back to original state if error
+        |> dict.get(room_id)
+        // Get the room dict
+        |> result.map(dict.delete(_, id))
+        // If got a result, delete this ID from it
+        |> result.map(dict.insert(state, room_id, _))
+        // If success, update state with our new room
+        |> result.unwrap(state)
+      // Unwrap the result, or revert back to original state if error
 
       actor.continue(new_state)
     }

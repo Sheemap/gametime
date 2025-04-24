@@ -1,10 +1,15 @@
 import clock/clock
 import gleam/erlang
+import gleam/erlang/process
 import gleam/int
 import gleam/io
 import gleam/list
 import gleam/string
 import gleam/time/duration
+import mist
+import web/router
+import wisp
+import wisp/wisp_mist
 
 pub type AddTimeError {
   MissingArgument
@@ -23,8 +28,26 @@ pub type UserAction {
 }
 
 pub fn main() {
-  io.println("Hello from gametime! This is the debug interface")
-  action_loop([])
+  io.println("Hello from gametime!")
+  // action_loop([])
+
+  // This sets the logger to print INFO level logs, and other sensible defaults
+  // for a web application.
+  wisp.configure_logger()
+
+  // TODO: Dont regenerate this every run, load from DB or so
+  let secret_key_base = wisp.random_string(64)
+
+  // Start the Mist web server.
+  let assert Ok(_) =
+    wisp_mist.handler(router.handle_request, secret_key_base)
+    |> mist.new
+    |> mist.port(8000)
+    |> mist.start_http
+
+  // The web server runs in new Erlang process, so put this one to sleep while
+  // it works concurrently.
+  process.sleep_forever()
 }
 
 fn action_loop(events) {

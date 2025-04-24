@@ -20,6 +20,7 @@
           packages = with pkgs; [
             gleam
             beam27Packages.erlang
+            rebar3
           ];
         };
       }

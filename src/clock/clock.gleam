@@ -1,13 +1,21 @@
+//// The clock module provides functions for manipulating "Clocks"
+//// Clocks are timers have a time value, and a state of on/off. As long as the clock is in the on state, the time will decrease. Like one half of a chess clock
+////
+//// Internally Clocks are represented as List(ClockEvent), which is a list of every event that has occured, and the timestamp.
+//// With this event data, we can compute the ClockState. Which is a snapshot of how much time is remaining, and what time the clock was started (if its running).
+////
+
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/order
 import gleam/time/duration
 import gleam/time/timestamp
 
-// A Clock is really just a list of ClockEvents which can be aggregated together to determine the ClockState
+/// A Clock is a list of ClockEvents which can be aggregated together to determine the ClockState
 pub type Clock =
   List(ClockEvent)
 
+/// A snapshot in time of a clock's state
 pub type ClockState {
   ClockState(
     remaining_duration: duration.Duration,
@@ -15,39 +23,37 @@ pub type ClockState {
   )
 }
 
+/// An interaction with the clock
 pub type ClockEvent {
-  START(timestamp.Timestamp)
-  STOP(timestamp.Timestamp)
-  ADD(timestamp.Timestamp, duration.Duration)
+  Start(timestamp.Timestamp)
+  Stop(timestamp.Timestamp)
+  Add(timestamp.Timestamp, duration.Duration)
 }
 
-// Start the clock
-// Prepends a Start clock event
-// If the clock is already running, this function is a noop
+/// Prepends the Start event to the clock
 pub fn start_clock(clock: Clock) -> Clock {
   case check_clock(clock).active_since {
-    None -> [START(timestamp.system_time()), ..clock]
+    None -> [Start(timestamp.system_time()), ..clock]
     Some(_) -> clock
   }
 }
 
-// Stop the clock
-// Prepends a Stop clock event
-// If the clock is already stopped, this function is a noop
+/// Prepends the Stop event to the clock
 pub fn stop_clock(clock) {
   case check_clock(clock).active_since {
     None -> clock
-    Some(_) -> [STOP(timestamp.system_time()), ..clock]
+    Some(_) -> [Stop(timestamp.system_time()), ..clock]
   }
 }
 
-// Adds time to the clock
-// To subtract time, provide a negative duration
+/// Prepends the Add event to the clock
+///
+/// To subtract time, add a negative duration
 pub fn add_time(clock, duration: duration.Duration) {
-  [ADD(timestamp.system_time(), duration), ..clock]
+  [Add(timestamp.system_time(), duration), ..clock]
 }
 
-// Processes the clock events to get the current ClockState
+/// Figure out the current clock state
 pub fn check_clock(events: Clock) {
   let base_state = ClockState(duration.seconds(0), option.None)
   get_clock_state(base_state, list.reverse(events))
@@ -70,7 +76,7 @@ fn get_clock_state(state: ClockState, events) -> ClockState {
     }
     [event, ..events_remainder] ->
       case event {
-        START(time) -> {
+        Start(time) -> {
           // We only want to update the active_since value if the event input is older than the current active_since
           let active_since: timestamp.Timestamp = case state.active_since {
             option.Some(val) -> val
@@ -90,7 +96,7 @@ fn get_clock_state(state: ClockState, events) -> ClockState {
             _ -> get_clock_state(state, events_remainder)
           }
         }
-        STOP(time) ->
+        Stop(time) ->
           case state.active_since {
             None -> {
               echo "hia"
@@ -106,7 +112,7 @@ fn get_clock_state(state: ClockState, events) -> ClockState {
               |> ClockState(None)
               |> get_clock_state(events_remainder)
           }
-        ADD(_, dur) ->
+        Add(_, dur) ->
           dur
           |> duration.add(state.remaining_duration)
           |> ClockState(state.active_since)

@@ -1,4 +1,4 @@
-import chess_clock/chess_clock
+import clock/clock
 import gleam/erlang
 import gleam/int
 import gleam/io
@@ -46,11 +46,11 @@ fn action_loop(events) {
       io.println("Uh oh! We got an error! Try again?")
       action_loop(events)
     }
-    Start -> chess_clock.start_clock(events) |> action_loop()
-    Stop -> chess_clock.stop_clock(events) |> action_loop()
+    Start -> clock.start_clock(events) |> action_loop()
+    Stop -> clock.stop_clock(events) |> action_loop()
     Add(val) ->
       case val {
-        Ok(dur) -> chess_clock.add_time(events, dur) |> action_loop()
+        Ok(dur) -> clock.add_time(events, dur) |> action_loop()
         Error(e) ->
           case e {
             MissingArgument -> {
@@ -66,7 +66,7 @@ fn action_loop(events) {
           }
       }
     Check -> {
-      echo chess_clock.check_clock(events)
+      echo clock.check_clock(events)
       action_loop(events)
     }
     ShowEvents -> {

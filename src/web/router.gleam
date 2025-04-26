@@ -5,6 +5,9 @@ import gleam/http/request
 import gleam/http/response
 import gleam/io
 import gleam/json
+import gleam/list
+import gleam/option.{None, Some}
+import gleam/result
 import gleam/string_tree
 import web/json_decoders
 import web/middleware
@@ -32,25 +35,34 @@ pub fn handle_request(req: Request) -> Response {
   }
 }
 
+fn create_unprocessable_error(errors: List(decode.DecodeError)) {
+  errors
+  |> list.map(fn(err) {
+    json.object([
+      #("expected", json.string(err.expected)),
+      #("found", json.string(err.found)),
+      #("path", json.array(err.path, json.string)),
+    ])
+  })
+  |> json.preprocessed_array
+}
+
 /// Create's a lobby
 fn create_lobby(req) {
   use <- wisp.require_method(req, Post)
   use body <- wisp.require_json(req)
-  echo body
-  let json_str = {
-    let json_str = decode.run(body, decode.string)
-    case json_str {
-      Ok(str) -> str
-      Error(e) -> "{}"
+
+  case decode.run(body, json_decoders.create_lobby_decoder()) {
+    Ok(model) ->
+      wisp.ok()
+      |> wisp.json_body(string_tree.from_string("{\"lobbyId\": \"ID yay!\"}"))
+    Error(errors) -> {
+      let err_body =
+        create_unprocessable_error(errors)
+        |> json.to_string_tree
+
+      wisp.unprocessable_entity()
+      |> wisp.json_body(err_body)
     }
   }
-  echo json_str
-
-  let model = json_decoders.create_lobby_config_request(json_str)
-  echo model
-
-  let resp = string_tree.from_string("{\"lobbyId\": \"ID yay!\"}")
-
-  wisp.ok()
-  |> wisp.json_body(resp)
 }

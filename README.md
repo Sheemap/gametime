@@ -6,7 +6,7 @@ Dependencies and environment is all built and managed with [Nix](https://nixos.o
 
 Run `nix develop` to drop into a dev shell with all dependencies available.
 
-You can have it do this automatically by installing direnv and allowing the directory.
+You can have it do this automatically by installing [direnv](https://direnv.net/) and allowing the directory.
 
 ## API Client
 The docs are currently in a format for [Bruno](https://www.usebruno.com/). Ideally would like an OpenAPI spec, and will likely move to that.

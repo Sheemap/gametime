@@ -16,6 +16,7 @@
         pkgs = nixpkgs.legacyPackages.${system};
       in
       {
+        packages.bruno = pkgs.bruno;
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
             gleam

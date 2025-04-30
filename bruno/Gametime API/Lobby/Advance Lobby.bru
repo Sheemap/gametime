@@ -1,0 +1,24 @@
+meta {
+  name: Advance Lobby
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://localhost:8000/api/v1/lobby/:lobby_id/advance/:seat_id
+  body: none
+  auth: inherit
+}
+
+params:path {
+  seat_id: buh
+  lobby_id: hia
+}
+
+body:json {
+  {
+    "name": "",
+    "seats": []
+    
+  }
+}

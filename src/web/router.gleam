@@ -1,3 +1,4 @@
+import clock/clock
 import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/http.{Delete, Get, Post, Put}
@@ -11,6 +12,7 @@ import gleam/result
 import gleam/string_tree
 import gleam/time/duration
 import gleam/time/timestamp
+import lobby/lobby
 import web/api_models
 import web/json_decoders
 import web/middleware
@@ -34,6 +36,8 @@ pub fn handle_request(req: Request) -> Response {
     // Create a lobby
     ["api", "v1", "lobby"] -> create_lobby(req)
     ["api", "v1", "lobby", lobby_id] -> lobby_resource(req, lobby_id)
+    ["api", "v1", "lobby", lobby_id, "advance", seat_id] ->
+      advance_lobby(req, lobby_id, seat_id)
     // This matches all other paths.
     _ -> wisp.not_found()
   }
@@ -100,4 +104,48 @@ fn get_lobby(req, lobby_id) {
 
   wisp.ok()
   |> wisp.json_body(resp)
+}
+
+/// Advances the lobby. Only works if the seat_id resonsible is currently in a position to advance the table. IE, is the current active seat
+fn advance_lobby(req, lobby_id, seat_id) {
+  use <- wisp.require_method(req, Post)
+
+  // TODO: Load lobby from DB
+  let lobby =
+    lobby.Lobby(id: lobby_id, name: "Hia", seats: [
+      lobby.Seat(
+        id: "buh",
+        name: None,
+        clock: clock.add_time(clock.start_clock([]), duration.seconds(60)),
+      ),
+      lobby.Seat(
+        id: "iddkkkkk",
+        name: None,
+        clock: clock.add_time([], duration.seconds(60)),
+      ),
+    ])
+  let seat = lobby.seats |> list.find(fn(s) { s.id == seat_id })
+
+  case seat {
+    Ok(s) -> {
+      // TODO: Instead of hardcoded just checking the clock is active, maybe we have a function to determine if allowed? Taking into account lobby strategy
+      let clock_state = clock.check_clock(s.clock)
+
+      case clock_state.active_since {
+        Some(_) -> {
+          case lobby.advance(lobby) {
+            Ok(l) -> {
+              let api_lobby = api_models.map_lobby_to_response(l)
+
+              wisp.ok()
+              |> wisp.json_body(api_models.encode_get_lobby_response(api_lobby))
+            }
+            Error(_) -> wisp.bad_request()
+          }
+        }
+        None -> wisp.bad_request()
+      }
+    }
+    Error(_) -> wisp.not_found()
+  }
 }

@@ -5,9 +5,13 @@ meta {
 }
 
 get {
-  url: http://localhost:8000/api/v1/create-lobby
+  url: http://localhost:8000/api/v1/lobby/:lobby_id
   body: json
   auth: inherit
+}
+
+params:path {
+  lobby_id: hewasdfwo
 }
 
 body:json {

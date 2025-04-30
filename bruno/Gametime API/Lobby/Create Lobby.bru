@@ -5,14 +5,14 @@ meta {
 }
 
 post {
-  url: http://localhost:8000/api/v1/create-lobby
+  url: http://localhost:8000/api/v1/lobby
   body: json
   auth: inherit
 }
 
 body:json {
   {
-    "pname": "",
+    "name": "",
     "seats": []
     
   }

@@ -4,11 +4,12 @@ import gleam/float
 import gleam/http/response
 import gleam/json
 import gleam/list
-import gleam/option.{type Option}
+import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string_tree
 import gleam/time/duration.{type Duration}
 import gleam/time/timestamp.{type Timestamp}
+import lobby/lobby
 import web/models.{CreateLobbyConfigRequest, CreateSeat}
 
 /// errors
@@ -80,16 +81,39 @@ pub type GetLobbyResponse {
   GetLobbyResponse(id: String, name: String, seats: List(LobbySeat))
 }
 
+pub fn map_lobby_to_response(lobby: lobby.Lobby) -> GetLobbyResponse {
+  let seats =
+    lobby.seats
+    |> list.map(fn(s) {
+      let clock_state = clock.check_clock(s.clock)
+
+      // If active_since is None, then ends_at will also be None
+      let ends_at =
+        clock_state.active_since
+        |> option.map(fn(_) {
+          timestamp.add(timestamp.system_time(), clock_state.remaining_duration)
+        })
+
+      LobbyClock(remaining_duration: clock_state.remaining_duration, ends_at:)
+      |> LobbySeat(id: s.id, name: s.name, clock: _)
+    })
+
+  GetLobbyResponse(id: lobby.id, name: lobby.name, seats:)
+}
+
 pub fn encode_get_lobby_response(response: GetLobbyResponse) {
   let seats = {
     response.seats
     |> list.map(fn(seat) {
       let remaining_duration =
-        seat.clock.remaining_duration |> duration.to_seconds()
+        seat.clock.remaining_duration
+        |> duration.to_seconds()
+        |> float.to_precision(3)
 
       let ends_at =
         seat.clock.ends_at
         |> option.map(timestamp.to_unix_seconds)
+        |> option.map(float.to_precision(_, 3))
 
       let clock = {
         [

@@ -99,7 +99,6 @@ fn get_clock_state(state: ClockState, events) -> ClockState {
         Stop(time) ->
           case state.active_since {
             None -> {
-              echo "hia"
               get_clock_state(state, events_remainder)
             }
             Some(active_since) ->

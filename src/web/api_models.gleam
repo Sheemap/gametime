@@ -9,6 +9,7 @@ import gleam/result
 import gleam/string_tree
 import gleam/time/duration.{type Duration}
 import gleam/time/timestamp.{type Timestamp}
+import ids/ulid
 import lobby/lobby
 import web/models.{CreateLobbyConfigRequest, CreateSeat}
 
@@ -66,6 +67,20 @@ pub fn decode_create_lobby_request(body) {
 pub fn encode_create_lobby_response(response: CreateLobbyResponse) {
   json.object([#("lobby_id", json.string(response.lobby_id))])
   |> json.to_string_tree
+}
+
+pub fn map_create_request_to_lobby(model: CreateLobbyRequest) {
+  let seats =
+    model.seats
+    |> list.map(fn(s) {
+      lobby.Seat(
+        id: ulid.generate(),
+        name: s.name,
+        clock: clock.add_time([], duration.seconds(s.initial_seconds)),
+      )
+    })
+
+  lobby.Lobby(id: ulid.generate(), name: model.name, seats:)
 }
 
 /// get-lobby stuff

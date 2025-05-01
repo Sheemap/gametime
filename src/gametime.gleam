@@ -1,4 +1,5 @@
 import clock/clock
+import db/db
 import gleam/erlang
 import gleam/erlang/process
 import gleam/int
@@ -7,6 +8,7 @@ import gleam/list
 import gleam/string
 import gleam/time/duration
 import mist
+import sqlight
 import web/router
 import wisp
 import wisp/wisp_mist
@@ -31,6 +33,11 @@ pub fn main() {
   io.println("Hello from gametime!")
   // action_loop([])
 
+  use conn <- sqlight.with_connection(":memory:")
+  let assert Ok(_) = db.init_db(conn)
+
+  let web_context = router.Context(db: db.Context(conn:))
+
   // This sets the logger to print INFO level logs, and other sensible defaults
   // for a web application.
   wisp.configure_logger()
@@ -40,7 +47,7 @@ pub fn main() {
 
   // Start the Mist web server.
   let assert Ok(_) =
-    wisp_mist.handler(router.handle_request, secret_key_base)
+    wisp_mist.handler(router.handle_request(_, web_context), secret_key_base)
     |> mist.new
     |> mist.port(8000)
     |> mist.start_http

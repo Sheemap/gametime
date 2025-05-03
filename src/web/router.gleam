@@ -92,15 +92,18 @@ fn create_lobby(req, ctx: Context) {
 }
 
 fn get_lobby(_req, lobby_id, ctx: Context) {
-  case db.get_lobby(lobby_id, ctx.db) {
-    Ok(l) -> {
-      let res =
-        api_models.map_lobby_to_response(l)
-        |> api_models.encode_get_lobby_response
+  use dblobby <- require_lobby(lobby_id, ctx)
+  let json_str =
+    api_models.map_lobby_to_response(dblobby)
+    |> api_models.encode_get_lobby_response
 
-      wisp.ok()
-      |> wisp.json_body(res)
-    }
+  wisp.ok()
+  |> wisp.json_body(json_str)
+}
+
+fn require_lobby(lobby_id, ctx: Context, callback) {
+  case db.get_lobby(lobby_id, ctx.db) {
+    Ok(dblobby) -> callback(dblobby)
     Error(e) if e == db.NotFoundErr -> {
       echo e
       wisp.not_found()
@@ -115,21 +118,8 @@ fn get_lobby(_req, lobby_id, ctx: Context) {
 /// Advances the lobby. Only works if the seat_id resonsible is currently in a position to advance the table. IE, is the current active seat
 fn advance_lobby(req, lobby_id, seat_id, ctx) {
   use <- wisp.require_method(req, Post)
+  use lobby <- require_lobby(lobby_id, ctx)
 
-  // TODO: Load lobby from DB
-  let lobby =
-    lobby.Lobby(id: lobby_id, name: "Hia", seats: [
-      lobby.Seat(
-        id: "buh",
-        name: None,
-        clock: clock.add_time(clock.start_clock([]), duration.seconds(60)),
-      ),
-      lobby.Seat(
-        id: "iddkkkkk",
-        name: None,
-        clock: clock.add_time([], duration.seconds(60)),
-      ),
-    ])
   let seat = lobby.seats |> list.find(fn(s) { s.id == seat_id })
 
   case seat {
@@ -152,6 +142,6 @@ fn advance_lobby(req, lobby_id, seat_id, ctx) {
         None -> wisp.bad_request()
       }
     }
-    Error(_) -> wisp.not_found()
+    Error(_) -> wisp.bad_request()
   }
 }

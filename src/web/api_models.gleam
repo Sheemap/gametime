@@ -32,7 +32,8 @@ pub type Seat {
   Seat(
     name: Option(String),
     initial_seconds: Int,
-    increment_seconds: Option(Int),
+    // TODO: Implement increment
+    // increment_seconds: Option(Int),
   )
 }
 
@@ -49,11 +50,7 @@ pub fn decode_create_lobby_request(body) {
     let seat_decoder = {
       use name <- decode.field("name", decode.optional(decode.string))
       use initial_seconds <- decode.field("initial_seconds", decode.int)
-      use increment_seconds <- decode.field(
-        "increment_seconds",
-        decode.optional(decode.int),
-      )
-      decode.success(Seat(name, initial_seconds, increment_seconds))
+      decode.success(Seat(name, initial_seconds))
     }
 
     use name <- decode.field("name", decode.string)
@@ -100,15 +97,28 @@ pub fn map_lobby_to_response(lobby: lobby.Lobby) -> GetLobbyResponse {
   let seats =
     lobby.seats
     |> list.map(fn(s) {
+      // To map the DB lobby to the response, we need to compute two things:
+      //   - The remaining duration of each clock
+      //   - If the clock is running, what time the clock will end
+
+      // With the seat's clock events, figure out the current clock state
       let clock_state = clock.check_clock(s.clock)
 
-      // If active_since is None, then ends_at will also be None
-      let ends_at =
-        clock_state.active_since
-        |> option.map(fn(_) {
-          timestamp.add(timestamp.system_time(), clock_state.remaining_duration)
-        })
+      let ends_at = {
+        // If active since is None, that means the clock is not running,
+        // and there is no ends_at value to be calculated.
+        case option.is_none(clock_state.active_since) {
+          True -> None
+          False ->
+            timestamp.add(
+              timestamp.system_time(),
+              clock_state.remaining_duration,
+            )
+            |> Some
+        }
+      }
 
+      // Finally map that clock back into a LobbyClock, and map the result into a LobbySeat
       LobbyClock(remaining_duration: clock_state.remaining_duration, ends_at:)
       |> LobbySeat(id: s.id, name: s.name, clock: _)
     })

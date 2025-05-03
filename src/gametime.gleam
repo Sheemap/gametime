@@ -39,7 +39,7 @@ pub fn main() {
   io.println("Hello from gametime!")
   // action_loop([])
 
-  use conn <- sqlight.with_connection(":memory:")
+  use conn <- sqlight.with_connection("gametime.db")
   let assert Ok(_) = db.init_db(conn)
 
   let web_context = router.Context(db: db.Context(conn:))

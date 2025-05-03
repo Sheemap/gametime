@@ -8,6 +8,7 @@ import gleam/list
 import gleam/string
 import gleam/time/duration
 import mist
+import radiate
 import sqlight
 import web/router
 import wisp
@@ -30,6 +31,11 @@ pub type UserAction {
 }
 
 pub fn main() {
+  let _ =
+    radiate.new()
+    |> radiate.add_dir("src")
+    |> radiate.start()
+
   io.println("Hello from gametime!")
   // action_loop([])
 

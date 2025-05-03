@@ -22,6 +22,7 @@
             gleam
             beam27Packages.erlang
             rebar3
+            inotify-tools
           ];
         };
       }

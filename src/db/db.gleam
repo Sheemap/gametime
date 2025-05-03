@@ -47,9 +47,14 @@ pub fn init_db(conn) {
 
 /// Create the lobby in the db!! Yippee
 pub fn save_lobby(lobby: lobby.Lobby, ctx: Context) {
+  // Result of the transaction
+  // We save this result so we can rollback if the result is Error()
+  // TODO: Can we reduce the nesting ? Maybe the use keyword can help here?
   let trans_result =
+    // Start the transaction
     sqlight.exec("BEGIN TRANSACTION;", ctx.conn)
     |> result.map(fn(_) {
+      // Insert the lobby record
       "
       INSERT INTO lobbies (id, name, created_at)
       VALUES (?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
@@ -59,11 +64,12 @@ pub fn save_lobby(lobby: lobby.Lobby, ctx: Context) {
         [sqlight.text(lobby.id), sqlight.text(lobby.name)],
         decode.dynamic,
       )
-      |> echo
     })
+    // TODO: Its annoying to have these flattens after every call
     |> result.flatten
     |> result.map(fn(_) {
-      echo "what the heck"
+      // The sqlight library doesnt have a lot of auto parametization, so we do it manually here
+      // Build out the full flat array of all values we parameterizationing
       let seat_values =
         lobby.seats
         |> list.flat_map(fn(s) {
@@ -73,20 +79,22 @@ pub fn save_lobby(lobby: lobby.Lobby, ctx: Context) {
             sqlight.text(lobby.id),
           ]
         })
+      // Get the string to put after VALUES in the sql statement
       let seat_query_text =
         lobby.seats
-        //1970-01-01T00:00:01Z
         |> list.map(fn(_) { "(?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))" })
         |> string.join(",")
 
+      // Insert all the seats B)
       let sql2 = "
       INSERT INTO seats (id, name, lobby_id, created_at)
       VALUES " <> seat_query_text <> ";"
       sqlight.query(sql2, ctx.conn, seat_values, decode.dynamic)
-      |> echo
     })
     |> result.flatten
     |> result.map(fn(_) {
+      // Insert all the clock events
+      // TODO: Should we just init this to a blank array? Delete some code
       let clock_values =
         lobby.seats
         |> list.flat_map(fn(s) {
@@ -121,6 +129,8 @@ pub fn save_lobby(lobby: lobby.Lobby, ctx: Context) {
     |> result.map(fn(_) { sqlight.exec("COMMIT TRANSACTION;", ctx.conn) })
     |> result.flatten
 
+  // If the transaction succeeded, then yippee
+  // Otherwise, rollback and un-yippee
   case trans_result {
     Ok(v) -> Ok(v)
     Error(v) -> {

@@ -60,17 +60,23 @@ fn create_lobby(req, ctx: Context) {
   use <- wisp.require_method(req, Post)
   use body <- wisp.require_json(req)
 
+  // Decode the lobby request into a model
   case api_models.decode_create_lobby_request(body) {
     Ok(model) -> {
+      // TODO: Can we do this validation in the decoder? Whats the right layer?
+      // Some additional validation
       use <- middleware.require_predicate(
         fn() { list.length(model.seats) >= 1 },
         "please specify at least one seat",
       )
 
+      // Map this request model to a lobby.Lobby
       let lobby = api_models.map_create_request_to_lobby(model)
 
+      // Save B)
       case db.save_lobby(lobby, ctx.db) {
         Ok(_) -> {
+          // Success! Return the id
           let response = api_models.CreateLobbyResponse(lobby.id)
           wisp.ok()
           |> wisp.json_body(api_models.encode_create_lobby_response(response))
@@ -101,20 +107,6 @@ fn get_lobby(_req, lobby_id, ctx: Context) {
   |> wisp.json_body(json_str)
 }
 
-fn require_lobby(lobby_id, ctx: Context, callback) {
-  case db.get_lobby(lobby_id, ctx.db) {
-    Ok(dblobby) -> callback(dblobby)
-    Error(e) if e == db.NotFoundErr -> {
-      echo e
-      wisp.not_found()
-    }
-    Error(e) -> {
-      echo e
-      wisp.internal_server_error()
-    }
-  }
-}
-
 /// Advances the lobby. Only works if the seat_id resonsible is currently in a position to advance the table. IE, is the current active seat
 fn advance_lobby(req, lobby_id, seat_id, ctx) {
   use <- wisp.require_method(req, Post)
@@ -143,5 +135,19 @@ fn advance_lobby(req, lobby_id, seat_id, ctx) {
       }
     }
     Error(_) -> wisp.bad_request()
+  }
+}
+
+fn require_lobby(lobby_id, ctx: Context, callback) {
+  case db.get_lobby(lobby_id, ctx.db) {
+    Ok(dblobby) -> callback(dblobby)
+    Error(e) if e == db.NotFoundErr -> {
+      echo e
+      wisp.not_found()
+    }
+    Error(e) -> {
+      echo e
+      wisp.internal_server_error()
+    }
   }
 }

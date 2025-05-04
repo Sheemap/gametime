@@ -2,7 +2,6 @@ import clock/clock
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
-import gleam/time/calendar
 
 pub type TurnStrategy {
   Clockwise
@@ -16,6 +15,75 @@ pub type Lobby {
   Lobby(id: String, name: String, seats: List(Seat))
 }
 
+pub type LobbyUpdate =
+  #(Lobby, List(clock.ClockEvent))
+
+pub type StartLobbyError {
+  LobbyIsActive
+}
+
+/// Start the initial clock in the lobby!
+/// Returns an updated lobby, and any new events that were added
+pub fn start_lobby(lobby: Lobby) -> Result(LobbyUpdate, StartLobbyError) {
+  // TODO: Load strategy from the Lobby
+  let strategy = Clockwise
+  case strategy {
+    Clockwise -> start_clockwise(lobby)
+  }
+}
+
+fn start_clockwise(lobby: Lobby) -> Result(LobbyUpdate, StartLobbyError) {
+  use <- require_inactive_seats(lobby)
+
+  update_lobby(lobby, fn(seat, index) {
+    case index == 0 {
+      // If this seat is index 0, start the clock!
+      True -> {
+        let #(new_clock, new_event) = clock.start_clock(seat.clock)
+
+        #(Seat(seat.id, seat.name, new_clock), new_event)
+      }
+      // Otherwise pass through unmodified
+      False -> #(seat, None)
+    }
+  })
+  |> Ok
+}
+
+/// Helper that takes in a seat mapper, will apply the mapper to every seat, and return a LobbyUpdate
+fn update_lobby(
+  lobby: Lobby,
+  seat_mapper: fn(Seat, Int) -> #(Seat, Option(clock.ClockEvent)),
+) -> LobbyUpdate {
+  let #(new_seats, events) =
+    lobby.seats
+    // We use this instead of map_index because we need to collect up all the events, not just the new clocks
+    // So we initialize two arrays, then push the updated seat and/or clock event
+    |> list.index_fold(#([], []), fn(acc, s, index) {
+      let #(new_seat, event) = seat_mapper(s, index)
+
+      case event {
+        Some(ev) -> #([new_seat, ..acc.0], [ev, ..acc.1])
+        None -> #([new_seat, ..acc.0], acc.1)
+      }
+    })
+
+  #(Lobby(lobby.id, lobby.name, seats: new_seats), events)
+}
+
+fn require_inactive_seats(lobby: Lobby, callback) {
+  let active_seats =
+    lobby.seats
+    |> list.any(fn(s) {
+      // If the clock's active_since value is Some, this seat is active
+      clock.check_clock(s.clock).active_since |> option.is_some()
+    })
+  case active_seats {
+    True -> Error(LobbyIsActive)
+    False -> callback()
+  }
+}
+
 pub type AdvanceLobbyError {
   NoActiveSeat
   MultipleActiveSeats
@@ -23,7 +91,7 @@ pub type AdvanceLobbyError {
 
 /// Advances the lobby according to a TurnStrategy
 /// As of now, it is hardcoded to the Clockwise strategy
-pub fn advance(lobby: Lobby) -> Result(Lobby, AdvanceLobbyError) {
+pub fn advance(lobby: Lobby) -> Result(LobbyUpdate, AdvanceLobbyError) {
   // TODO: Load strategy from the Lobby
   let strategy = Clockwise
   case strategy {
@@ -34,35 +102,36 @@ pub fn advance(lobby: Lobby) -> Result(Lobby, AdvanceLobbyError) {
 /// Advance the lobby clockwise
 /// This is done by just progressing through the lobby.seats list, moving on to the next seat in the list.
 /// If we reach the end we wrap around to the beginning
-fn advance_clockwise(lobby: Lobby) -> Result(Lobby, AdvanceLobbyError) {
+fn advance_clockwise(lobby: Lobby) -> Result(LobbyUpdate, AdvanceLobbyError) {
   use <- require_single_active_seat(lobby)
 
   case get_next_clockwise_index(lobby) {
     // No active seat
     None -> Error(NoActiveSeat)
-    Some(index) -> {
+    Some(active_index) -> {
       // The next seat is our index + 1
       // Taking into account out of range, wrap around
-      let next_seat_index = wrap_index(index + 1, list.length(lobby.seats))
+      let next_seat_index =
+        wrap_index(active_index + 1, list.length(lobby.seats))
 
-      // Map over the seats to get the new ones.
-      // Need to stop the current clock, and start the next
-      let seats =
-        lobby.seats
-        |> list.index_map(fn(s, index) {
-          case index {
-            // This is the current clock, time to stop it!
-            _ if index == index ->
-              s.clock |> clock.stop_clock |> Seat(s.id, s.name, _)
-            // This is the next one, time to start it!
-            _ if next_seat_index == index ->
-              s.clock |> clock.start_clock |> Seat(s.id, s.name, _)
-            // This is an unrelated clock, return unmodified!
-            _ -> s
+      update_lobby(lobby, fn(s, index) {
+        case index {
+          // This is the current clock, time to stop it!
+          _ if index == index -> {
+            let #(new_clock, new_event) = clock.stop_clock(s.clock)
+
+            #(Seat(s.id, s.name, new_clock), new_event)
           }
-        })
-
-      Ok(Lobby(lobby.id, lobby.name, seats))
+          // This is the next one, time to start it!
+          _ if next_seat_index == index -> {
+            let #(new_clock, new_event) = clock.start_clock(s.clock)
+            #(Seat(s.id, s.name, new_clock), new_event)
+          }
+          // This is an unrelated clock, return unmodified!
+          _ -> #(s, None)
+        }
+      })
+      |> Ok
     }
   }
 }

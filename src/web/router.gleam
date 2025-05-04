@@ -39,8 +39,32 @@ pub fn handle_request(req: Request, ctx: Context) -> Response {
     ["api", "v1", "lobby", lobby_id] -> lobby_resource(req, lobby_id, ctx)
     ["api", "v1", "lobby", lobby_id, "advance", seat_id] ->
       advance_lobby(req, lobby_id, seat_id, ctx)
+    ["api", "v1", "lobby", lobby_id, "start"] -> start_lobby(req, lobby_id, ctx)
     // This matches all other paths.
     _ -> wisp.not_found()
+  }
+}
+
+fn start_lobby(req: Request, lobby_id, ctx) {
+  use <- wisp.require_method(req, Post)
+  use lobby <- require_lobby(lobby_id, ctx)
+  // TODO: Require the requestor is allowed to start the lobby (Maybe store the session_id of the creator?)
+  case lobby.start_lobby(lobby) {
+    Ok(#(lobby, _events)) -> {
+      // TODO: Insert all events
+
+      let json_str =
+        api_models.map_lobby_to_response(lobby)
+        |> api_models.encode_get_lobby_response
+
+      wisp.ok()
+      |> wisp.json_body(json_str)
+    }
+    Error(e) ->
+      case e {
+        lobby.LobbyIsActive ->
+          Some("lobby is already started") |> utils.bad_request()
+      }
   }
 }
 
@@ -110,8 +134,8 @@ fn advance_lobby(req, lobby_id, seat_id, ctx) {
   use <- require_can_advance_lobby(lobby, seat_id)
 
   case lobby.advance(lobby) {
-    Ok(l) -> {
-      let api_lobby = api_models.map_lobby_to_response(l)
+    Ok(lobby_update) -> {
+      let api_lobby = api_models.map_lobby_to_response(lobby_update.0)
 
       wisp.ok()
       |> wisp.json_body(api_models.encode_get_lobby_response(api_lobby))

@@ -6,7 +6,7 @@
 ////
 
 import gleam/list
-import gleam/option.{None, Some}
+import gleam/option.{type Option, None, Some}
 import gleam/order
 import gleam/time/duration
 import gleam/time/timestamp
@@ -31,26 +31,38 @@ pub type ClockEvent {
 }
 
 /// Prepends the Start event to the clock
-pub fn start_clock(clock: Clock) -> Clock {
+/// Returning the new event if it did so
+pub fn start_clock(clock: Clock) -> #(Clock, Option(ClockEvent)) {
   case check_clock(clock).active_since {
-    None -> [Start(timestamp.system_time()), ..clock]
-    Some(_) -> clock
+    // Clock is already running, dont add anything
+    Some(_) -> #(clock, None)
+    None -> {
+      let event = Start(timestamp.system_time())
+      #([event, ..clock], Some(event))
+    }
   }
 }
 
 /// Prepends the Stop event to the clock
-pub fn stop_clock(clock) {
+/// Returning the new event if it did so
+pub fn stop_clock(clock) -> #(Clock, Option(ClockEvent)) {
   case check_clock(clock).active_since {
-    None -> clock
-    Some(_) -> [Stop(timestamp.system_time()), ..clock]
+    // Clock is already stopped, dont add anything
+    None -> #(clock, None)
+    Some(_) -> {
+      let event = Stop(timestamp.system_time())
+      #([event, ..clock], Some(event))
+    }
   }
 }
 
 /// Prepends the Add event to the clock
+/// Returning the new event after doing so
 ///
 /// To subtract time, add a negative duration
-pub fn add_time(clock, duration: duration.Duration) {
-  [Add(timestamp.system_time(), duration), ..clock]
+pub fn add_time(clock, duration: duration.Duration) -> #(Clock, ClockEvent) {
+  let event = Add(timestamp.system_time(), duration)
+  #([event, ..clock], event)
 }
 
 /// Figure out the current clock state

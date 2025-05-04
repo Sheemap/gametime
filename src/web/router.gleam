@@ -36,7 +36,7 @@ pub fn handle_request(req: Request, ctx: Context) -> Response {
     // [] -> home_page(req)
     // Create a lobby
     ["api", "v1", "lobby"] -> create_lobby(req, ctx)
-    ["api", "v1", "lobby", lobby_id] -> lobby_resource(req, lobby_id, ctx)
+    ["api", "v1", "lobby", lobby_id] -> get_lobby(req, lobby_id, ctx)
     ["api", "v1", "lobby", lobby_id, "advance", seat_id] ->
       advance_lobby(req, lobby_id, seat_id, ctx)
     ["api", "v1", "lobby", lobby_id, "start"] -> start_lobby(req, lobby_id, ctx)
@@ -65,13 +65,6 @@ fn start_lobby(req: Request, lobby_id, ctx) {
         lobby.LobbyIsActive ->
           Some("lobby is already started") |> utils.bad_request()
       }
-  }
-}
-
-fn lobby_resource(req: Request, lobby_id, ctx) {
-  case req.method {
-    Get -> get_lobby(req, lobby_id, ctx)
-    _ -> wisp.not_found()
   }
 }
 
@@ -117,7 +110,8 @@ fn create_lobby(req, ctx: Context) {
   }
 }
 
-fn get_lobby(_req, lobby_id, ctx: Context) {
+fn get_lobby(req, lobby_id, ctx: Context) {
+  use <- wisp.require_method(req, Get)
   use dblobby <- require_lobby(lobby_id, ctx)
   let json_str =
     api_models.map_lobby_to_response(dblobby)

@@ -1,0 +1,202 @@
+---
+openapi: 3.1.1
+info:
+  title: Gametime API
+  description: |-
+    Lets game :)
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000/api
+tags:
+  - name: lobby
+    description: Lobby management and advancement
+paths:
+
+  /v1/lobby:
+    post:
+      tags:
+        - lobby
+      summary: Create a lobby
+      operationId: createLobby
+      requestBody:
+        description: Create lobby payload
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+                - seats
+              properties:
+                id:
+                  type: string
+                  example: 'Gaming lobby for gamers'
+                seats:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - name
+                      - initial_seconds
+                    properties:
+                      name:
+                        type:
+                          - string
+                          - 'null'
+                      initial_seconds:
+                        type: int
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lobby_id:
+                    type: string
+                    description: The new lobby id
+        '422':
+          description: Validation exception
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnprocessableEntity'
+        default:
+          description: Unexpected error
+
+  /v1/lobby/{lobby_id}:
+    parameters:
+      - $ref: '#/components/parameters/LobbyId'
+    get:
+      tags:
+        - lobby
+      summary: Get lobby
+      operationId: getLobby
+      responses:
+        '200':
+          description: Successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetLobbyResponse'
+        '404':
+          description: Lobby not found
+
+  /v1/lobby/{lobby_id}/start:
+    parameters:
+      - $ref: '#/components/parameters/LobbyId'
+    post:
+      tags:
+        - lobby
+      summary: Start lobby
+      operationId: startLobby
+      responses:
+        '200':
+          description: Successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetLobbyResponse'
+        '400':
+          description: Lobby not in correct state to be started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Lobby not found
+
+  /v1/lobby/{lobby_id}/advance/{seat_id}:
+    parameters:
+      - $ref: '#/components/parameters/LobbyId'
+      - $ref: '#/components/parameters/SeatId'
+    post:
+      tags:
+        - lobby
+      summary: Advance lobby. Move to next turn
+      operationId: advanceLobby
+      responses:
+        '200':
+          description: Successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetLobbyResponse'
+        '400':
+          description: Lobby not in correct state to be advanced by this seat
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Lobby not found
+
+components:
+  parameters:
+    LobbyId:
+      name: lobby_id
+      in: path
+      required: true
+      schema:
+        type: string
+    SeatId:
+      name: seat_id
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    UnprocessableEntity:
+      type: array
+      items:
+        type: object
+        properties:
+          expected:
+            type: string
+          found:
+            type: string
+          path:
+            type: array
+            items:
+              type: string
+    Error:
+      type: object
+      properties:
+        detail:
+          type: string
+          description: The details of the error
+    GetLobbyResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: The lobby id
+        name:
+          type: string
+          description: The lobby name
+        seats:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type:
+                  - string
+                  - 'null'
+              clock:
+                type: object
+                properties:
+                  remaining_duration:
+                    type: float
+                    description: The amount of seconds remaining on the clock
+                  ends_at:
+                    type:
+                      - float
+                      - 'null'
+                    description: A unix timestamp of when the clock is expected to reach 0. Will be null if the clock is not running
+
+                  

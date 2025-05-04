@@ -15,8 +15,12 @@ pub type Lobby {
   Lobby(id: String, name: String, seats: List(Seat))
 }
 
+pub type SeatEvent {
+  SeatEvent(seat_id: String, event: clock.ClockEvent)
+}
+
 pub type LobbyUpdate =
-  #(Lobby, List(clock.ClockEvent))
+  #(Lobby, List(SeatEvent))
 
 pub type StartLobbyError {
   LobbyIsActive
@@ -55,7 +59,7 @@ fn update_lobby(
   lobby: Lobby,
   seat_mapper: fn(Seat, Int) -> #(Seat, Option(clock.ClockEvent)),
 ) -> LobbyUpdate {
-  let #(new_seats, events) =
+  let #(new_seats, seat_updates) =
     lobby.seats
     // We use this instead of map_index because we need to collect up all the events, not just the new clocks
     // So we initialize two arrays, then push the updated seat and/or clock event
@@ -63,12 +67,15 @@ fn update_lobby(
       let #(new_seat, event) = seat_mapper(s, index)
 
       case event {
-        Some(ev) -> #([new_seat, ..acc.0], [ev, ..acc.1])
+        Some(ev) -> {
+          let seat_event = SeatEvent(new_seat.id, ev)
+          #([new_seat, ..acc.0], [seat_event, ..acc.1])
+        }
         None -> #([new_seat, ..acc.0], acc.1)
       }
     })
 
-  #(Lobby(lobby.id, lobby.name, seats: new_seats), events)
+  #(Lobby(lobby.id, lobby.name, seats: new_seats), seat_updates)
 }
 
 fn require_inactive_seats(lobby: Lobby, callback) {
@@ -117,7 +124,7 @@ fn advance_clockwise(lobby: Lobby) -> Result(LobbyUpdate, AdvanceLobbyError) {
       update_lobby(lobby, fn(s, index) {
         case index {
           // This is the current clock, time to stop it!
-          _ if index == index -> {
+          _ if active_index == index -> {
             let #(new_clock, new_event) = clock.stop_clock(s.clock)
 
             #(Seat(s.id, s.name, new_clock), new_event)

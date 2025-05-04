@@ -45,6 +45,27 @@ pub fn init_db(conn) {
   |> sqlight.exec(conn)
 }
 
+pub fn insert_events(events: List(lobby.SeatEvent), ctx: Context) {
+  let value_text =
+    events
+    |> list.map(fn(_) { "(?, ?, ?, ?)" })
+    |> string.join(",")
+  let values =
+    events
+    |> list.flat_map(fn(se) {
+      [
+        sqlight.text(se.seat_id),
+        sqlight.text(event_type_text(se.event)),
+        sqlight.nullable(sqlight.text, event_data_text(se.event)),
+        sqlight.text(event_time_text(se.event)),
+      ]
+    })
+
+  let sql = "
+    INSERT INTO clock_events (seat_id, event_type, event_data, created_at) VALUES " <> value_text <> ";"
+  sqlight.query(sql, ctx.conn, values, decode.dynamic)
+}
+
 /// Create the lobby in the db!! Yippee
 pub fn save_lobby(lobby: lobby.Lobby, ctx: Context) {
   // Result of the transaction
@@ -271,4 +292,31 @@ fn lobby_decoder() {
     event_data:,
     event_time:,
   ))
+}
+
+/// Gets the text representation of a clock event type for persisting
+fn event_type_text(event) {
+  case event {
+    clock.Add(_, _) -> "Add"
+    clock.Start(_) -> "Start"
+    clock.Stop(_) -> "Stop"
+  }
+}
+
+/// Gets the text representation of clock event data for persisting
+fn event_data_text(event) {
+  case event {
+    clock.Add(_, d) ->
+      duration.to_seconds(d) |> float.to_precision(3) |> float.to_string |> Some
+    _ -> None
+  }
+}
+
+/// Gets the text representation of when the clock event occurred
+fn event_time_text(event) {
+  case event {
+    clock.Add(t, _) -> timestamp.to_rfc3339(t, duration.seconds(0))
+    clock.Start(t) -> timestamp.to_rfc3339(t, duration.seconds(0))
+    clock.Stop(t) -> timestamp.to_rfc3339(t, duration.seconds(0))
+  }
 }

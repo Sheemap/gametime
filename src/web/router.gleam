@@ -50,8 +50,8 @@ fn start_lobby(req: Request, lobby_id, ctx) {
   use lobby <- require_lobby(lobby_id, ctx)
   // TODO: Require the requestor is allowed to start the lobby (Maybe store the session_id of the creator?)
   case lobby.start_lobby(lobby) {
-    Ok(#(lobby, _events)) -> {
-      // TODO: Insert all events
+    Ok(#(lobby, seat_updates)) -> {
+      use _ <- require_success(fn() { db.insert_events(seat_updates, ctx.db) })
 
       let json_str =
         api_models.map_lobby_to_response(lobby)
@@ -134,8 +134,11 @@ fn advance_lobby(req, lobby_id, seat_id, ctx) {
   use <- require_can_advance_lobby(lobby, seat_id)
 
   case lobby.advance(lobby) {
-    Ok(lobby_update) -> {
-      let api_lobby = api_models.map_lobby_to_response(lobby_update.0)
+    Ok(#(lobby, seat_updates)) -> {
+      // Persist the updates, or return error
+      use _ <- require_success(fn() { db.insert_events(seat_updates, ctx.db) })
+
+      let api_lobby = api_models.map_lobby_to_response(lobby)
 
       wisp.ok()
       |> wisp.json_body(api_models.encode_get_lobby_response(api_lobby))
@@ -182,5 +185,17 @@ fn require_can_advance_lobby(lobby: lobby.Lobby, seat_id: String, callback) {
       case e {
         lobby.SeatNotFound -> wisp.not_found()
       }
+  }
+}
+
+/// Executes the given function, and calls the callback with the result if succesfull
+/// Otherwise logs the error and returns internal_server_error
+fn require_success(func, callback) {
+  case func() {
+    Ok(result) -> callback(result)
+    Error(e) -> {
+      echo e
+      wisp.internal_server_error()
+    }
   }
 }

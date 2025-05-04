@@ -68,7 +68,8 @@ pub fn add_time(clock, duration: duration.Duration) -> #(Clock, ClockEvent) {
 /// Figure out the current clock state
 pub fn check_clock(events: Clock) {
   let base_state = ClockState(duration.seconds(0), option.None)
-  get_clock_state(base_state, list.reverse(events))
+  let sorted = list.sort(events, event_compare)
+  get_clock_state(base_state, sorted)
 }
 
 fn get_clock_state(state: ClockState, events) -> ClockState {
@@ -86,7 +87,7 @@ fn get_clock_state(state: ClockState, events) -> ClockState {
           |> ClockState(state.active_since)
       }
     }
-    [event, ..events_remainder] ->
+    [event, ..events_remainder] -> {
       case event {
         Start(time) -> {
           // We only want to update the active_since value if the event input is older than the current active_since
@@ -129,5 +130,21 @@ fn get_clock_state(state: ClockState, events) -> ClockState {
           |> ClockState(state.active_since)
           |> get_clock_state(events_remainder)
       }
+    }
   }
+}
+
+/// Compares the timestamps of two clock events
+pub fn event_compare(left, right) {
+  let occurred_at = fn(event) {
+    case event {
+      Add(t, _) -> t
+      Start(t) -> t
+      Stop(t) -> t
+    }
+  }
+
+  let ltime = occurred_at(left)
+  let rtime = occurred_at(right)
+  timestamp.compare(ltime, rtime)
 }

@@ -17,6 +17,7 @@ import lobby/lobby
 import web/api_models
 import web/json_decoders
 import web/middleware
+import web/utils
 import wisp.{type Request, type Response}
 
 pub type Context {
@@ -33,11 +34,6 @@ pub fn handle_request(req: Request, ctx: Context) -> Response {
   case wisp.path_segments(req) {
     // This matches `/`.
     // [] -> home_page(req)
-    // This matches `/todos`.
-    // ["todos"] -> todos(req)
-    // This matches `/todos/:id`.
-    // The `id` segment is bound to a variable and passed to the handler.
-    // ["todos", id] -> handle_todo(req, id)
     // Create a lobby
     ["api", "v1", "lobby"] -> create_lobby(req, ctx)
     ["api", "v1", "lobby", lobby_id] -> lobby_resource(req, lobby_id, ctx)
@@ -120,7 +116,17 @@ fn advance_lobby(req, lobby_id, seat_id, ctx) {
       wisp.ok()
       |> wisp.json_body(api_models.encode_get_lobby_response(api_lobby))
     }
-    Error(_) -> wisp.bad_request()
+    Error(e) -> {
+      case e {
+        lobby.NoActiveSeat ->
+          Some("lobby has not been started") |> utils.bad_request()
+        lobby.MultipleActiveSeats ->
+          Some(
+            "lobby somehow has multiple seats active! this is an invalid state",
+          )
+          |> utils.bad_request()
+      }
+    }
   }
 }
 
@@ -146,7 +152,7 @@ fn require_can_advance_lobby(lobby: lobby.Lobby, seat_id: String, callback) {
     Ok(can_advance) ->
       case can_advance {
         True -> callback()
-        False -> wisp.bad_request()
+        False -> Some("seat is not active") |> utils.bad_request()
       }
     Error(e) ->
       case e {

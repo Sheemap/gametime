@@ -18,8 +18,11 @@ pub type Lobby {
 
 pub type AdvanceLobbyError {
   NoActiveSeat
+  MultipleActiveSeats
 }
 
+/// Advances the lobby according to a TurnStrategy
+/// As of now, it is hardcoded to the Clockwise strategy
 pub fn advance(lobby: Lobby) -> Result(Lobby, AdvanceLobbyError) {
   // TODO: Load strategy from the Lobby
   let strategy = Clockwise
@@ -28,9 +31,47 @@ pub fn advance(lobby: Lobby) -> Result(Lobby, AdvanceLobbyError) {
   }
 }
 
-fn advance_clockwise(lobby: Lobby) {
-  // Figure out the index of the current seat
-  let active_seat_index =
+/// Advance the lobby clockwise
+/// This is done by just progressing through the lobby.seats list, moving on to the next seat in the list.
+/// If we reach the end we wrap around to the beginning
+fn advance_clockwise(lobby: Lobby) -> Result(Lobby, AdvanceLobbyError) {
+  use <- require_single_active_seat(lobby)
+
+  case get_next_clockwise_index(lobby) {
+    // No active seat
+    None -> Error(NoActiveSeat)
+    Some(index) -> {
+      // The next seat is our index + 1
+      // Taking into account out of range, wrap around
+      let next_seat_index = wrap_index(index + 1, list.length(lobby.seats))
+
+      // Map over the seats to get the new ones.
+      // Need to stop the current clock, and start the next
+      let seats =
+        lobby.seats
+        |> list.index_map(fn(s, index) {
+          case index {
+            // This is the current clock, time to stop it!
+            _ if index == index ->
+              s.clock |> clock.stop_clock |> Seat(s.id, s.name, _)
+            // This is the next one, time to start it!
+            _ if next_seat_index == index ->
+              s.clock |> clock.start_clock |> Seat(s.id, s.name, _)
+            // This is an unrelated clock, return unmodified!
+            _ -> s
+          }
+        })
+
+      Ok(Lobby(lobby.id, lobby.name, seats))
+    }
+  }
+}
+
+/// Returns the active clock in the lobby
+///
+/// If there are multiple, we will return the highest index
+fn get_next_clockwise_index(lobby: Lobby) {
+  let active_index =
     lobby.seats
     |> list.index_fold(-1, fn(location: Int, seat: Seat, cur_index: Int) {
       let clock_state = clock.check_clock(seat.clock)
@@ -42,30 +83,9 @@ fn advance_clockwise(lobby: Lobby) {
         None -> location
       }
     })
-
-  case active_seat_index {
-    // No active seat
-    -1 -> Error(NoActiveSeat)
-    _ -> {
-      let next_seat_index =
-        wrap_index(active_seat_index + 1, list.length(lobby.seats))
-
-      // Map over the seats to get the new ones.
-      // Need to stop the current clock, and start the next
-      let seats =
-        lobby.seats
-        |> list.index_map(fn(s, index) {
-          case index {
-            _ if active_seat_index == index ->
-              s.clock |> clock.stop_clock |> Seat(s.id, s.name, _)
-            _ if next_seat_index == index ->
-              s.clock |> clock.start_clock |> Seat(s.id, s.name, _)
-            _ -> s
-          }
-        })
-
-      Ok(Lobby(lobby.id, lobby.name, seats))
-    }
+  case active_index {
+    -1 -> None
+    _ -> Some(active_index)
   }
 }
 
@@ -109,5 +129,29 @@ fn wrap_index(desired, length) {
   case desired > length {
     True -> 0
     False -> desired
+  }
+}
+
+/// Requires that only a single active seat exists
+/// If not, will return an AdvanceLobbyError
+fn require_single_active_seat(lobby: Lobby, callback) {
+  let active_count =
+    lobby.seats
+    |> list.fold(0, fn(acc, s) {
+      let clock_state = clock.check_clock(s.clock)
+      case clock_state.active_since {
+        // This one is active! Increment the accumulator
+        Some(_) -> acc + 1
+        None -> acc
+      }
+    })
+
+  case active_count {
+    _ if active_count == 1 -> callback()
+    _ if active_count <= 0 -> Error(NoActiveSeat)
+    _ if active_count >= 2 -> Error(MultipleActiveSeats)
+
+    // Shouldnt ever hit this case, but here to make the type checker happy
+    _ -> Error(NoActiveSeat)
   }
 }

@@ -111,28 +111,14 @@ fn get_lobby(_req, lobby_id, ctx: Context) {
 fn advance_lobby(req, lobby_id, seat_id, ctx) {
   use <- wisp.require_method(req, Post)
   use lobby <- require_lobby(lobby_id, ctx)
+  use <- require_can_advance_lobby(lobby, seat_id)
 
-  let seat = lobby.seats |> list.find(fn(s) { s.id == seat_id })
+  case lobby.advance(lobby) {
+    Ok(l) -> {
+      let api_lobby = api_models.map_lobby_to_response(l)
 
-  case seat {
-    Ok(s) -> {
-      // TODO: Instead of hardcoded just checking the clock is active, maybe we have a function to determine if allowed? Taking into account lobby strategy
-      let clock_state = clock.check_clock(s.clock)
-
-      case clock_state.active_since {
-        Some(_) -> {
-          case lobby.advance(lobby) {
-            Ok(l) -> {
-              let api_lobby = api_models.map_lobby_to_response(l)
-
-              wisp.ok()
-              |> wisp.json_body(api_models.encode_get_lobby_response(api_lobby))
-            }
-            Error(_) -> wisp.bad_request()
-          }
-        }
-        None -> wisp.bad_request()
-      }
+      wisp.ok()
+      |> wisp.json_body(api_models.encode_get_lobby_response(api_lobby))
     }
     Error(_) -> wisp.bad_request()
   }
@@ -149,5 +135,22 @@ fn require_lobby(lobby_id, ctx: Context, callback) {
       echo e
       wisp.internal_server_error()
     }
+  }
+}
+
+/// Requires that the requested seat is allowed to advance the lobby
+/// Returns a 400 error if not
+/// Or a 404 error if we cant find the seat
+fn require_can_advance_lobby(lobby: lobby.Lobby, seat_id: String, callback) {
+  case lobby.can_seat_advance_lobby(lobby.Clockwise, lobby, seat_id) {
+    Ok(can_advance) ->
+      case can_advance {
+        True -> callback()
+        False -> wisp.bad_request()
+      }
+    Error(e) ->
+      case e {
+        lobby.SeatNotFound -> wisp.not_found()
+      }
   }
 }

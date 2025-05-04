@@ -251,6 +251,7 @@ fn add_or_update_seat(seats: List(lobby.Seat), row: GetLobbyRow) {
 }
 
 fn lobby_decoder() {
+  // This decoder is going to be given a tuple of dynamic values, a SQL row is what it is
   use lobby_id <- decode.field(0, decode.string)
   use lobby_name <- decode.field(1, decode.string)
   use seat_id <- decode.field(2, decode.string)

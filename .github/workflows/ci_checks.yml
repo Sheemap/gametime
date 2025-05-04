@@ -12,10 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: cachix/install-nix-action@v20
 
-      - run: ./ci_check.sh
+      - run: bash ci_check.sh
 
       # If we want to enable testing
       # - uses: erlef/setup-beam@v1

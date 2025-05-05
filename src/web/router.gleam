@@ -1,21 +1,9 @@
-import clock/clock
 import db/db
-import gleam/dynamic
-import gleam/dynamic/decode
-import gleam/http.{Delete, Get, Post, Put}
-import gleam/http/request
-import gleam/http/response
-import gleam/io
-import gleam/json
+import gleam/http.{Get, Post}
 import gleam/list
-import gleam/option.{None, Some}
-import gleam/result
-import gleam/string_tree
-import gleam/time/duration
-import gleam/time/timestamp
+import gleam/option.{Some}
 import lobby/lobby
 import web/api_models
-import web/json_decoders
 import web/middleware
 import web/utils
 import wisp.{type Request, type Response}
@@ -78,7 +66,7 @@ fn create_lobby(req, ctx: Context) {
     Ok(model) -> {
       // TODO: Can we do this validation in the decoder? Whats the right layer?
       // Some additional validation
-      use <- middleware.require_predicate(
+      use <- utils.require_predicate(
         fn() { list.length(model.seats) >= 1 },
         "please specify at least one seat",
       )

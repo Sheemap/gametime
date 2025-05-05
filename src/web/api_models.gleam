@@ -1,17 +1,12 @@
 import clock/clock
 import gleam/dynamic/decode
 import gleam/float
-import gleam/http/response
 import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import gleam/result
-import gleam/string_tree
 import gleam/time/duration.{type Duration}
 import gleam/time/timestamp.{type Timestamp}
-import ids/ulid
 import lobby/lobby
-import web/models.{CreateLobbyConfigRequest, CreateSeat}
 
 /// errors
 pub fn encode_unprocessable_entity_response(errors: List(decode.DecodeError)) {

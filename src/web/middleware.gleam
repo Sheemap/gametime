@@ -1,4 +1,3 @@
-import gleam/http/response
 import gleam/string_tree
 import wisp
 

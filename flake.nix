@@ -44,6 +44,7 @@
         # run with `nix fmt`
         formatter = treefmtEval.config.build.wrapper;
 
+        # run with `nix flake check`
         checks.formatting = treefmtEval.config.build.check self;
       }
     );

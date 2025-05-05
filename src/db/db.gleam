@@ -186,6 +186,14 @@ pub fn get_lobby(lobby_id, ctx: Context) {
   sqlight.query(sql, ctx.conn, [sqlight.text(lobby_id)], lobby_decoder())
   |> result.map_error(SqlightErr)
   |> result.map(list.fold(_, lobby.Lobby("", "", []), fold_lobby))
+  |> result.map(fn(lobby) {
+    // If we got our fold input lobby as the result, then we got no rows from the db
+    case lobby == lobby.Lobby("", "", []) {
+      True -> Error(NotFoundErr)
+      False -> Ok(lobby)
+    }
+  })
+  |> result.flatten
 }
 
 type GetLobbyRow {

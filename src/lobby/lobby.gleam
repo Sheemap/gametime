@@ -2,6 +2,7 @@ import clock/clock
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
+import ids/ulid
 
 pub type TurnStrategy {
   Clockwise
@@ -229,5 +230,17 @@ fn require_single_active_seat(lobby: Lobby, callback) {
 
     // Shouldnt ever hit this case, but here to make the type checker happy
     _ -> Error(NoActiveSeat)
+  }
+}
+
+pub type IdType {
+  LobbyId
+  SeatId
+}
+
+pub fn generate_id(id_type: IdType) {
+  case id_type {
+    LobbyId -> "l_" <> ulid.generate()
+    SeatId -> "s_" <> ulid.generate()
   }
 }

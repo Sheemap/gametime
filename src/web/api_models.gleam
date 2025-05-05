@@ -73,10 +73,14 @@ pub fn map_create_request_to_lobby(model: CreateLobbyRequest) {
       let #(new_clock, _) =
         clock.add_time([], duration.seconds(s.initial_seconds))
 
-      lobby.Seat(id: ulid.generate(), name: s.name, clock: new_clock)
+      lobby.Seat(
+        id: lobby.generate_id(lobby.SeatId),
+        name: s.name,
+        clock: new_clock,
+      )
     })
 
-  lobby.Lobby(id: ulid.generate(), name: model.name, seats:)
+  lobby.Lobby(id: lobby.generate_id(lobby.LobbyId), name: model.name, seats:)
 }
 
 /// get-lobby stuff

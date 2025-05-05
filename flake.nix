@@ -7,16 +7,30 @@
     url = "github:numtide/flake-utils";
     inputs.systems.follows = "systems";
   };
+  inputs.treefmt-nix.url = "github:numtide/treefmt-nix";
 
   outputs =
-    { nixpkgs, flake-utils, ... }:
+    {
+      nixpkgs,
+      flake-utils,
+      treefmt-nix,
+      ...
+    }:
     flake-utils.lib.eachDefaultSystem (
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+        treefmtEval = treefmt-nix.lib.evalModule pkgs ./treefmt.nix;
       in
       {
-        packages.bruno = pkgs.bruno;
+        packages = {
+          ci_checks = pkgs.writeShellApplication {
+            name = "ci_checks";
+            runtimeInputs = [ pkgs.python313Packages.openapi-spec-validator ];
+            text = "openapi-spec-validator openapi.yml";
+          };
+        };
+
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
             gleam
@@ -25,6 +39,9 @@
             inotify-tools
           ];
         };
+
+        # run with `nix fmt`
+        formatter = treefmtEval.config.build.wrapper;
       }
     );
 }

@@ -20,18 +20,8 @@ jobs:
           packages: python312Packages.openapi-spec-validator
           script: openapi-spec-validator openapi.yml
 
-      # Run whole project's formatting, and validate nothing changed
-      - run: nix fmt
-      - name: Get all changed files
-        id: changed-files
-        uses: tj-actions/changed-files@ed68ef82c095e0d48ec87eccea555d944a631a4c # v46
-        with:
-          files: "**/*.{nix,gleam}"
-      - name: Fail if any changes
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: |
-          echo "Formatter changed files! Please run the formatter before committing. 'nix fmt'"
-          exit 1
+      # Validate the flake can build, and check formatting
+      - run: nix flake check
 
       # If we want to enable testing
       # - uses: erlef/setup-beam@v1

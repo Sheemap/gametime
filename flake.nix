@@ -11,6 +11,7 @@
 
   outputs =
     {
+      self,
       nixpkgs,
       flake-utils,
       treefmt-nix,
@@ -42,6 +43,8 @@
 
         # run with `nix fmt`
         formatter = treefmtEval.config.build.wrapper;
+
+        checks.formatting = treefmtEval.config.build.check self;
       }
     );
 }

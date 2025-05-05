@@ -240,7 +240,7 @@ pub type IdType {
 
 pub fn generate_id(id_type: IdType) {
   case id_type {
-    LobbyId -> "l_" <> ulid.generate()
-    SeatId -> "s_" <> ulid.generate()
+    LobbyId -> "L_" <> ulid.generate()
+    SeatId -> "S_" <> ulid.generate()
   }
 }

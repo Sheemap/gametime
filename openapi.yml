@@ -63,8 +63,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UnprocessableEntity'
-        default:
-          description: Unexpected error
 
   /v1/lobby/{lobby_id}:
     parameters:
@@ -149,15 +147,23 @@ components:
         type: string
   schemas:
     UnprocessableEntity:
+      description: Something in your request was invalid
       type: array
       items:
+        required:
+          - expected
+          - found
+          - path
         type: object
         properties:
           expected:
+            description: What input we were expecting
             type: string
           found:
+            description: The input that broke the validation rules
             type: string
           path:
+            description: Path to the actual problematic field
             type: array
             items:
               type: string
@@ -180,6 +186,10 @@ components:
           type: array
           items:
             type: object
+            required:
+              - id
+              - name
+              - clock
             properties:
               id:
                 type: string
@@ -189,6 +199,9 @@ components:
                   - 'null'
               clock:
                 type: object
+                required:
+                  - remaining_duration
+                  - ends_at
                 properties:
                   remaining_duration:
                     type: float

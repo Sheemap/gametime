@@ -1,4 +1,3 @@
-import gleam/string_tree
 import wisp
 
 pub fn initial(
@@ -16,15 +15,4 @@ pub fn initial(
 
   // Handle the request!
   handle_request(req)
-}
-
-pub fn require_predicate(func: fn() -> Bool, msg: String, callback) {
-  case func() {
-    True -> callback()
-    False ->
-      wisp.bad_request()
-      |> wisp.json_body(string_tree.from_string(
-        "{\"detail\": \"" <> msg <> "\"}",
-      ))
-  }
 }

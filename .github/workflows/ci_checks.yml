@@ -19,6 +19,18 @@ jobs:
           script: |
             openapi-spec-validator openapi.yml
 
+      - run: nix fmt
+
+      - name: Get all changed files
+        id: changed-files-yaml
+        uses: tj-actions/changed-files@ed68ef82c095e0d48ec87eccea555d944a631a4c # v46
+
+      - name: Fail if any changes
+        if: steps.changed-files-yaml.outputs.any_changed == 'true'  
+        run: |
+          echo "Formatter changed files! Please run the formatter before committing. `nix fmt`"
+          exit 1
+
       # If we want to enable testing
       # - uses: erlef/setup-beam@v1
       #   with:

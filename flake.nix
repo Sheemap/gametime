@@ -41,7 +41,7 @@
         };
 
         # run with `nix fmt`
-        formatter = treefmtEval.config.build.wrapper;
+  formatter = treefmtEval.config.build.wrapper;
       }
     );
 }

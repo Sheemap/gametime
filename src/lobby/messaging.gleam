@@ -1,5 +1,10 @@
 import gleam/erlang/process.{type Subject}
-import gleam/otp/supervisor
+import gleam/float
+import gleam/json
+import gleam/list
+import gleam/option.{None}
+import gleam/otp/actor
+import gleam/time/timestamp
 
 // The "channel" is where we will send new ClockEvents, and receive new ClockEvents
 // On sending, we will expect the websocket, and queue connection to forward on the clock event
@@ -8,24 +13,60 @@ import gleam/otp/supervisor
 
 // This is the type you will RECEIVE FROM the channel
 pub type ChannelResponse {
-  // The child can send a new subject back in order for bidirectional communication
+  // When we store websocket, we return a new subject from within that new beam thread.
+  // That way we can send shit directly to an individual websocket
   ChildSubject(Subject(ChannelRequest))
+}
+
+pub type LobbyMessage {
+  LobbyMessage(msg_type: String, content: json.Json)
 }
 
 // This is the type you can SEND TO the channel
 pub type ChannelRequest {
-  Free(ChannelResponse)
+  Start
+  StoreWebsocket(String, Subject(json.Json))
+  Emit(String, LobbyMessage)
 }
 
-pub fn start() -> Subject(ChannelResponse) {
-  // TODO: create a supervisor, provided in gleam/otp
-  // let channel = supervisor.start(supervisor.Spec())
-  let channel = process.new_subject()
+pub fn start() -> Subject(ChannelRequest) {
+  let assert Ok(actor) =
+    actor.start_spec(
+      actor.Spec(
+        init: fn() { actor.Ready([], process.new_selector()) },
+        init_timeout: 10,
+        loop: fn(msg: ChannelRequest, state) {
+          case msg {
+            Start -> actor.Continue(state, None)
+            StoreWebsocket(lobby_id, websocket) -> {
+              actor.Continue([#(lobby_id, websocket), ..state], None)
+            }
+            Emit(lobby_id, lobby_msg) -> {
+              let now =
+                timestamp.system_time()
+                |> timestamp.to_unix_seconds()
+                |> float.to_precision(3)
 
-  // Just return?
-  // TODO: what
-  // figure out
-  channel
+              let res_json =
+                json.object([
+                  #("occurred_at", json.float(now)),
+                  #("msg_type", json.string(lobby_msg.msg_type)),
+                  #("content", lobby_msg.content),
+                ])
+
+              state
+              |> list.filter(fn(state_item) { state_item.0 == lobby_id })
+              |> list.each(fn(state_item) {
+                process.send(state_item.1, res_json)
+              })
+
+              actor.Continue(state, None)
+            }
+          }
+        },
+      ),
+    )
+  actor
 }
 // TODO: Implement this
 //

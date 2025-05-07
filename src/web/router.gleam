@@ -1,15 +1,18 @@
 import db/db
+import gleam/erlang/process
 import gleam/http.{Get, Post}
+import gleam/json
 import gleam/list
 import gleam/option.{Some}
 import lobby/lobby
+import lobby/messaging
 import web/api_models
 import web/middleware
 import web/utils
 import wisp.{type Request, type Response}
 
 pub type Context {
-  Context(db: db.Context)
+  Context(db: db.Context, ws_hub: process.Subject(messaging.ChannelRequest))
 }
 
 pub fn handle_request(req: Request, ctx: Context) -> Response {
@@ -41,9 +44,22 @@ fn start_lobby(req: Request, lobby_id, ctx) {
     Ok(#(lobby, seat_updates)) -> {
       use _ <- require_success(fn() { db.insert_events(seat_updates, ctx.db) })
 
-      let json_str =
+      let api_lobby =
         api_models.map_lobby_to_response(lobby)
         |> api_models.encode_get_lobby_response
+
+      // Emit the new updated lobby to all websockets
+      process.send(
+        ctx.ws_hub,
+        messaging.Emit(
+          lobby_id,
+          messaging.LobbyMessage("lobby_update", api_lobby),
+        ),
+      )
+
+      let json_str =
+        api_lobby
+        |> json.to_string_tree
 
       wisp.ok()
       |> wisp.json_body(json_str)
@@ -104,6 +120,7 @@ fn get_lobby(req, lobby_id, ctx: Context) {
   let json_str =
     api_models.map_lobby_to_response(dblobby)
     |> api_models.encode_get_lobby_response
+    |> json.to_string_tree
 
   wisp.ok()
   |> wisp.json_body(json_str)
@@ -120,10 +137,21 @@ fn advance_lobby(req, lobby_id, seat_id, ctx) {
       // Persist the updates, or return error
       use _ <- require_success(fn() { db.insert_events(seat_updates, ctx.db) })
 
-      let api_lobby = api_models.map_lobby_to_response(lobby)
+      let api_lobby =
+        api_models.map_lobby_to_response(lobby)
+        |> api_models.encode_get_lobby_response
+
+      // Emit the new updated lobby to all websockets
+      process.send(
+        ctx.ws_hub,
+        messaging.Emit(
+          lobby_id,
+          messaging.LobbyMessage("lobby_update", api_lobby),
+        ),
+      )
 
       wisp.ok()
-      |> wisp.json_body(api_models.encode_get_lobby_response(api_lobby))
+      |> wisp.json_body(json.to_string_tree(api_lobby))
     }
     Error(e) -> {
       case e {

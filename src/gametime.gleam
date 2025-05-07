@@ -1,9 +1,15 @@
 import db/db
 import gleam/erlang
 import gleam/erlang/process
+import gleam/http/request.{type Request}
+import gleam/http/response.{type Response}
 import gleam/io
+import gleam/json
+import gleam/option.{Some}
+import gleam/otp/actor
 import gleam/time/duration
-import mist
+import lobby/messaging
+import mist.{type Connection, type ResponseData}
 import radiate
 import sqlight
 import web/router
@@ -34,22 +40,23 @@ pub fn main() {
 
   io.println("Hello from gametime!")
   // action_loop([])
+  //
+
+  let websocket_subject = messaging.start()
 
   use conn <- sqlight.with_connection("gametime.db")
   let assert Ok(_) = db.init_db(conn)
 
-  let web_context = router.Context(db: db.Context(conn:))
+  let web_context =
+    router.Context(db: db.Context(conn:), ws_hub: websocket_subject)
 
   // This sets the logger to print INFO level logs, and other sensible defaults
   // for a web application.
   wisp.configure_logger()
 
-  // TODO: Dont regenerate this every run, load from DB or so
-  let secret_key_base = wisp.random_string(64)
-
   // Start the Mist web server.
   let assert Ok(_) =
-    wisp_mist.handler(router.handle_request(_, web_context), secret_key_base)
+    misty_handler(web_context)
     |> mist.new
     |> mist.port(8000)
     |> mist.start_http
@@ -57,6 +64,65 @@ pub fn main() {
   // The web server runs in new Erlang process, so put this one to sleep while
   // it works concurrently.
   process.sleep_forever()
+}
+
+pub type WsMessage {
+  Broadcast(String)
+}
+
+fn misty_handler(web_context: router.Context) {
+  fn(req: Request(Connection)) -> Response(ResponseData) {
+    let secret_key_base = wisp.random_string(64)
+    case request.path_segments(req) {
+      ["api", "v1", "lobby", lobby_id, "ws"] -> {
+        let asdf =
+          mist.websocket(
+            request: req,
+            on_init: fn(conn) {
+              let subject = process.new_subject()
+              process.send(
+                web_context.ws_hub,
+                messaging.StoreWebsocket(lobby_id, subject),
+              )
+
+              let selector =
+                process.new_selector()
+                |> process.selecting(subject, fn(x) {
+                  x |> json.to_string |> Broadcast
+                })
+
+              #(conn, Some(selector))
+            },
+            on_close: fn(_conn) { io.println("goodbye!") },
+            handler: handle_ws_message,
+          )
+
+        asdf
+      }
+      _ ->
+        wisp_mist.handler(
+          fn(r) { router.handle_request(r, web_context) },
+          secret_key_base,
+        )(req)
+    }
+  }
+}
+
+fn handle_ws_message(state, conn, message) {
+  case message {
+    mist.Text("ping") -> {
+      let assert Ok(_) = mist.send_text_frame(conn, "pong")
+      actor.continue(state)
+    }
+    mist.Text(_) | mist.Binary(_) -> {
+      actor.continue(state)
+    }
+    mist.Custom(Broadcast(val)) -> {
+      let _ = mist.send_text_frame(conn, val)
+      actor.continue(state)
+    }
+    mist.Closed | mist.Shutdown -> actor.Stop(process.Normal)
+  }
 }
 // fn action_loop(events ) {
 //   let x =

@@ -158,5 +158,4 @@ pub fn encode_get_lobby_response(response: GetLobbyResponse) {
     #("name", json.string(response.name)),
     #("seats", json.preprocessed_array(seats)),
   ])
-  |> json.to_string_tree
 }

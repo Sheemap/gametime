@@ -1,7 +1,9 @@
 import api/router
+import cors_builder as cors
 import db/db
 import gleam/erlang
 import gleam/erlang/process
+import gleam/http
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
 import gleam/io
@@ -71,7 +73,16 @@ pub type WsMessage {
 }
 
 fn misty_handler(web_context: router.Context) {
+  let corsy =
+    cors.new()
+    |> cors.allow_all_origins
+    |> cors.allow_header("*")
+    |> cors.allow_method(http.Get)
+    |> cors.allow_method(http.Post)
+
   fn(req: Request(Connection)) -> Response(ResponseData) {
+    use req <- cors.mist_middleware(req, corsy)
+
     let secret_key_base = wisp.random_string(64)
     case request.path_segments(req) {
       ["api", "v1", "lobby", lobby_id, "ws"] -> {

@@ -1947,6 +1947,12 @@ var trim_start_regex = /* @__PURE__ */ new RegExp(
   `^[${unicode_whitespaces}]*`
 );
 var trim_end_regex = /* @__PURE__ */ new RegExp(`[${unicode_whitespaces}]*$`);
+function trim_start(string5) {
+  return string5.replace(trim_start_regex, "");
+}
+function trim_end(string5) {
+  return string5.replace(trim_end_regex, "");
+}
 function new_map() {
   return Dict.new();
 }
@@ -1990,6 +1996,9 @@ function classify_dynamic(data) {
 }
 
 // build/dev/javascript/gleam_stdlib/gleam/string.mjs
+function is_empty(str) {
+  return str === "";
+}
 function concat_loop(loop$strings, loop$accumulator) {
   while (true) {
     let strings = loop$strings;
@@ -2006,6 +2015,11 @@ function concat_loop(loop$strings, loop$accumulator) {
 }
 function concat2(strings) {
   return concat_loop(strings, "");
+}
+function trim(string5) {
+  let _pipe = string5;
+  let _pipe$1 = trim_start(_pipe);
+  return trim_end(_pipe$1);
 }
 
 // build/dev/javascript/gleam_stdlib/gleam_stdlib_decode_ffi.mjs
@@ -6335,7 +6349,7 @@ function create_lobby(lobby, handle_response) {
     throw makeError(
       "panic",
       "ui_lustre",
-      184,
+      186,
       "create_lobby",
       "Failed to create request to " + url,
       {}
@@ -6362,11 +6376,13 @@ function update2(model, msg) {
   } else if (msg instanceof UserChangedSeatName) {
     let s_index = msg[0];
     let name = msg[1];
+    let trimmed = trim(name);
     let _block;
-    if (name === "") {
+    let $ = is_empty(trimmed);
+    if ($) {
       _block = new None();
     } else {
-      _block = new Some(name);
+      _block = new Some(trimmed);
     }
     let new_name = _block;
     let _block$1;
@@ -6374,8 +6390,8 @@ function update2(model, msg) {
     _block$1 = index_map(
       _pipe,
       (s, i) => {
-        let $ = i === s_index;
-        if ($) {
+        let $1 = i === s_index;
+        if ($1) {
           let _record2 = s;
           return new Seat(new_name, _record2.initial_seconds);
         } else {
@@ -6396,7 +6412,7 @@ function update2(model, msg) {
     let new_model = _block$2;
     return [new_model, none()];
   } else if (msg instanceof UserClickedPrintState) {
-    echo(model, "src/ui_lustre.gleam", 100);
+    echo(model, "src/ui_lustre.gleam", 102);
     return [model, none()];
   } else if (msg instanceof UserChangedSeatInitialSeconds) {
     let s_index = msg[0];
@@ -6434,7 +6450,7 @@ function update2(model, msg) {
   } else if (msg instanceof ApiCreatedLobby) {
     let result = msg[0];
     if (!result.isOk()) {
-      echo("UH oH!PROBLEM", "src/ui_lustre.gleam", 124);
+      echo("UH oH!PROBLEM", "src/ui_lustre.gleam", 126);
       return [model, none()];
     } else {
       let lobby_id = result[0];
@@ -6545,7 +6561,7 @@ function main() {
     throw makeError(
       "let_assert",
       "ui_lustre",
-      27,
+      28,
       "main",
       "Pattern match failed, no pattern matched the value.",
       { value: $ }

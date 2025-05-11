@@ -7,6 +7,7 @@ import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
+import gleam/string
 import lustre
 import lustre/attribute
 import lustre/effect.{type Effect}
@@ -75,9 +76,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(newmodel, effect.none())
     }
     UserChangedSeatName(s_index, name) -> {
-      let new_name = case name {
-        "" -> None
-        _ -> Some(name)
+      let trimmed = string.trim(name)
+      let new_name = case string.is_empty(trimmed) {
+        True -> None
+        False -> Some(trimmed)
       }
 
       let seats =

@@ -1,24 +1,19 @@
 import api/models
 import gleam/dynamic/decode
-import gleam/float
 import gleam/http
 import gleam/http/request
 import gleam/int
-import gleam/io
 import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
-import gleam/time/calendar
-import gleam/time/duration.{type Duration}
-import gleam/time/timestamp.{type Timestamp}
 import lustre
-import lustre/attribute.{attribute}
+import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre/element/keyed
-import lustre/element/svg
+
 import lustre/event
 import rsvp
 
@@ -233,8 +228,4 @@ fn view(model: Model) -> Element(Msg) {
       ]),
     ],
   )
-}
-
-fn view_add_clock() {
-  todo
 }

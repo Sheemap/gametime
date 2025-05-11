@@ -6335,7 +6335,7 @@ function create_lobby(lobby, handle_response) {
     throw makeError(
       "panic",
       "ui_lustre",
-      189,
+      184,
       "create_lobby",
       "Failed to create request to " + url,
       {}
@@ -6396,7 +6396,7 @@ function update2(model, msg) {
     let new_model = _block$2;
     return [new_model, none()];
   } else if (msg instanceof UserClickedPrintState) {
-    echo(model, "src/ui_lustre.gleam", 105);
+    echo(model, "src/ui_lustre.gleam", 100);
     return [model, none()];
   } else if (msg instanceof UserChangedSeatInitialSeconds) {
     let s_index = msg[0];
@@ -6434,7 +6434,7 @@ function update2(model, msg) {
   } else if (msg instanceof ApiCreatedLobby) {
     let result = msg[0];
     if (!result.isOk()) {
-      echo("UH oH!PROBLEM", "src/ui_lustre.gleam", 129);
+      echo("UH oH!PROBLEM", "src/ui_lustre.gleam", 124);
       return [model, none()];
     } else {
       let lobby_id = result[0];
@@ -6545,7 +6545,7 @@ function main() {
     throw makeError(
       "let_assert",
       "ui_lustre",
-      32,
+      27,
       "main",
       "Pattern match failed, no pattern matched the value.",
       { value: $ }

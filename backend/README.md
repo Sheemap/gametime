@@ -1,24 +1,13 @@
-# server
-
-[![Package Version](https://img.shields.io/hexpm/v/server)](https://hex.pm/packages/server)
-[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/server/)
-
-```sh
-gleam add server@1
-```
-```gleam
-import backend
-
-pub fn main() -> Nil {
-  // TODO: An example of the project in use
-}
-```
-
-Further documentation can be found at <https://hexdocs.pm/server>.
+# backend
+The API for Gametime. Exposes a rest-ish API for a UI to interact with it.
 
 ## Development
 
 ```sh
 gleam run   # Run the project
-gleam test  # Run the tests
 ```
+
+## Docs
+The API is defined in the `openapi.yml` file in the root of the project. You can view the docs in a prettier form with the `redoc-static.html` file.
+
+Run the command `redocly buid-docs openapi.yml` to refresh the docs from the spec.

@@ -1,5 +1,4 @@
 import gleam/dynamic/decode
-import gleam/http/response
 import gleam/json
 import gleam/option.{type Option, None, Some}
 import gleam/string_tree
@@ -7,8 +6,8 @@ import wisp.{type Request, type Response}
 
 pub fn require_json(
   request: Request,
-  next: fn(decode.Dynamic) -> response.Response(wisp.Body),
-) -> response.Response(wisp.Body) {
+  next: fn(decode.Dynamic) -> Response,
+) -> Response {
   use <- wisp.require_content_type(request, "application/json")
   use body <- wisp.require_string_body(request)
 
@@ -20,7 +19,7 @@ pub fn require_json(
 
 /// Returns a bad request 400 HTTP error
 /// The message param is passed through to the "detail" json field
-pub fn bad_request(detail: Option(String)) -> response.Response(wisp.Body) {
+pub fn bad_request(detail: Option(String)) -> Response {
   case detail {
     None -> wisp.bad_request()
     Some(msg) -> {

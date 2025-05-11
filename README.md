@@ -10,6 +10,6 @@ The code is organized as a monorepo, with multiple projects as top level folders
 
 ## Projects
 
-[common](./common/README.md) - Common gleam code for all module
-[backend](./backend/README.md) - The API server for gametime
-[ui_lustre](./ui_lustre/README.md) - A lustre UI for gametime, probably will never be finished. Mainly just for me messing around and learning lustre
+- [common](./common/README.md) - Common gleam code for all module
+- [backend](./backend/README.md) - The API server for gametime
+- [ui_lustre](./ui_lustre/README.md) - A lustre UI for gametime, probably will never be finished. Mainly just for me messing around and learning lustre

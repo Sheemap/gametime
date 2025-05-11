@@ -40,7 +40,9 @@ pub type CreateLobbyResponse {
   CreateLobbyResponse(lobby_id: String)
 }
 
-pub fn decode_create_lobby_request(body) {
+pub fn decode_create_lobby_request(
+  body: decode.Dynamic,
+) -> Result(CreateLobbyRequest, List(decode.DecodeError)) {
   let decoder = {
     let seat_decoder = {
       use name <- decode.field("name", decode.optional(decode.string))

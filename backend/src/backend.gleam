@@ -1,3 +1,4 @@
+import api/router
 import db/db
 import gleam/erlang
 import gleam/erlang/process
@@ -12,7 +13,6 @@ import lobby/messaging
 import mist.{type Connection, type ResponseData}
 import radiate
 import sqlight
-import web/router
 import wisp
 import wisp/wisp_mist
 

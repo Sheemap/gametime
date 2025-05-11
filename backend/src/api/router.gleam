@@ -1,3 +1,6 @@
+import api/api_models
+import api/middleware
+import api/utils
 import db/db
 import gleam/erlang/process
 import gleam/http.{Get, Post}
@@ -6,9 +9,6 @@ import gleam/list
 import gleam/option.{Some}
 import lobby/lobby
 import lobby/messaging
-import web/api_models
-import web/middleware
-import web/utils
 import wisp.{type Request, type Response}
 
 pub type Context {
@@ -75,7 +75,7 @@ fn start_lobby(req: Request, lobby_id, ctx) {
 /// Create's a lobby
 fn create_lobby(req, ctx: Context) {
   use <- wisp.require_method(req, Post)
-  use body <- wisp.require_json(req)
+  use body <- utils.require_json(req)
 
   // Decode the lobby request into a model
   case api_models.decode_create_lobby_request(body) {

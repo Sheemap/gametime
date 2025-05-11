@@ -1,12 +1,15 @@
-import api/api_models
 import api/middleware
+import api/models
 import api/utils
+import clock/clock
 import db/db
 import gleam/erlang/process
 import gleam/http.{Get, Post}
 import gleam/json
 import gleam/list
-import gleam/option.{Some}
+import gleam/option.{None, Some}
+import gleam/time/duration
+import gleam/time/timestamp
 import lobby/lobby
 import lobby/messaging
 import wisp.{type Request, type Response}
@@ -45,8 +48,8 @@ fn start_lobby(req: Request, lobby_id, ctx) {
       use _ <- require_success(fn() { db.insert_events(seat_updates, ctx.db) })
 
       let api_lobby =
-        api_models.map_lobby_to_response(lobby)
-        |> api_models.encode_get_lobby_response
+        map_lobby_to_response(lobby)
+        |> models.encode_get_lobby_response
 
       // Emit the new updated lobby to all websockets
       process.send(
@@ -78,7 +81,7 @@ fn create_lobby(req, ctx: Context) {
   use body <- utils.require_json(req)
 
   // Decode the lobby request into a model
-  case api_models.decode_create_lobby_request(body) {
+  case models.decode_create_lobby_request(body) {
     Ok(model) -> {
       // TODO: Can we do this validation in the decoder? Whats the right layer?
       // Some additional validation
@@ -88,15 +91,15 @@ fn create_lobby(req, ctx: Context) {
       )
 
       // Map this request model to a lobby.Lobby
-      let lobby = api_models.map_create_request_to_lobby(model)
+      let lobby = map_create_request_to_lobby(model)
 
       // Save B)
       case db.save_lobby(lobby, ctx.db) {
         Ok(_) -> {
           // Success! Return the id
-          let response = api_models.CreateLobbyResponse(lobby.id)
+          let response = models.CreateLobbyResponse(lobby.id)
           wisp.ok()
-          |> wisp.json_body(api_models.encode_create_lobby_response(response))
+          |> wisp.json_body(models.encode_create_lobby_response(response))
         }
         Error(e) -> {
           echo e
@@ -106,7 +109,7 @@ fn create_lobby(req, ctx: Context) {
       }
     }
     Error(errors) -> {
-      let err_body = api_models.encode_unprocessable_entity_response(errors)
+      let err_body = models.encode_unprocessable_entity_response(errors)
 
       wisp.unprocessable_entity()
       |> wisp.json_body(err_body)
@@ -118,8 +121,8 @@ fn get_lobby(req, lobby_id, ctx: Context) {
   use <- wisp.require_method(req, Get)
   use dblobby <- require_lobby(lobby_id, ctx)
   let json_str =
-    api_models.map_lobby_to_response(dblobby)
-    |> api_models.encode_get_lobby_response
+    map_lobby_to_response(dblobby)
+    |> models.encode_get_lobby_response
     |> json.to_string_tree
 
   wisp.ok()
@@ -138,8 +141,8 @@ fn advance_lobby(req, lobby_id, seat_id, ctx) {
       use _ <- require_success(fn() { db.insert_events(seat_updates, ctx.db) })
 
       let api_lobby =
-        api_models.map_lobby_to_response(lobby)
-        |> api_models.encode_get_lobby_response
+        map_lobby_to_response(lobby)
+        |> models.encode_get_lobby_response
 
       // Emit the new updated lobby to all websockets
       process.send(
@@ -208,4 +211,57 @@ fn require_success(func, callback) {
       wisp.internal_server_error()
     }
   }
+}
+
+fn map_create_request_to_lobby(model: models.CreateLobbyRequest) {
+  let seats =
+    model.seats
+    |> list.map(fn(s) {
+      let #(new_clock, _) =
+        clock.add_time([], duration.seconds(s.initial_seconds))
+
+      lobby.Seat(
+        id: lobby.generate_id(lobby.SeatId),
+        name: s.name,
+        clock: new_clock,
+      )
+    })
+
+  lobby.Lobby(id: lobby.generate_id(lobby.LobbyId), name: model.name, seats:)
+}
+
+fn map_lobby_to_response(lobby: lobby.Lobby) -> models.GetLobbyResponse {
+  let seats =
+    lobby.seats
+    |> list.map(fn(s) {
+      // To map the DB lobby to the response, we need to compute two things:
+      //   - The remaining duration of each clock
+      //   - If the clock is running, what time the clock will end
+
+      // With the seat's clock events, figure out the current clock state
+      let clock_state = clock.check_clock(s.clock)
+
+      let ends_at = {
+        // If active since is None, that means the clock is not running,
+        // and there is no ends_at value to be calculated.
+        case option.is_none(clock_state.active_since) {
+          True -> None
+          False ->
+            timestamp.add(
+              timestamp.system_time(),
+              clock_state.remaining_duration,
+            )
+            |> Some
+        }
+      }
+
+      // Finally map that clock back into a LobbyClock, and map the result into a LobbySeat
+      models.LobbyClock(
+        remaining_duration: clock_state.remaining_duration,
+        ends_at:,
+      )
+      |> models.LobbySeat(id: s.id, name: s.name, clock: _)
+    })
+
+  models.GetLobbyResponse(id: lobby.id, name: lobby.name, seats:)
 }

@@ -1,12 +1,22 @@
-import clock/clock
 import gleam/dynamic/decode
 import gleam/float
 import gleam/json
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{type Option}
 import gleam/time/duration.{type Duration}
 import gleam/time/timestamp.{type Timestamp}
-import lobby/lobby
+
+pub type CreateSeat {
+  CreateSeat(
+    name: Option(String),
+    initial_seconds: Int,
+    increment_seconds: Option(Int),
+  )
+}
+
+pub type CreateLobbyConfigRequest {
+  CreateLobbyConfigRequest(name: String, seats: List(CreateSeat))
+}
 
 /// errors
 pub fn encode_unprocessable_entity_response(errors: List(decode.DecodeError)) {
@@ -63,23 +73,6 @@ pub fn encode_create_lobby_response(response: CreateLobbyResponse) {
   |> json.to_string_tree
 }
 
-pub fn map_create_request_to_lobby(model: CreateLobbyRequest) {
-  let seats =
-    model.seats
-    |> list.map(fn(s) {
-      let #(new_clock, _) =
-        clock.add_time([], duration.seconds(s.initial_seconds))
-
-      lobby.Seat(
-        id: lobby.generate_id(lobby.SeatId),
-        name: s.name,
-        clock: new_clock,
-      )
-    })
-
-  lobby.Lobby(id: lobby.generate_id(lobby.LobbyId), name: model.name, seats:)
-}
-
 /// get-lobby stuff
 pub type LobbyClock {
   LobbyClock(remaining_duration: Duration, ends_at: Option(Timestamp))
@@ -91,39 +84,6 @@ pub type LobbySeat {
 
 pub type GetLobbyResponse {
   GetLobbyResponse(id: String, name: String, seats: List(LobbySeat))
-}
-
-pub fn map_lobby_to_response(lobby: lobby.Lobby) -> GetLobbyResponse {
-  let seats =
-    lobby.seats
-    |> list.map(fn(s) {
-      // To map the DB lobby to the response, we need to compute two things:
-      //   - The remaining duration of each clock
-      //   - If the clock is running, what time the clock will end
-
-      // With the seat's clock events, figure out the current clock state
-      let clock_state = clock.check_clock(s.clock)
-
-      let ends_at = {
-        // If active since is None, that means the clock is not running,
-        // and there is no ends_at value to be calculated.
-        case option.is_none(clock_state.active_since) {
-          True -> None
-          False ->
-            timestamp.add(
-              timestamp.system_time(),
-              clock_state.remaining_duration,
-            )
-            |> Some
-        }
-      }
-
-      // Finally map that clock back into a LobbyClock, and map the result into a LobbySeat
-      LobbyClock(remaining_duration: clock_state.remaining_duration, ends_at:)
-      |> LobbySeat(id: s.id, name: s.name, clock: _)
-    })
-
-  GetLobbyResponse(id: lobby.id, name: lobby.name, seats:)
 }
 
 pub fn encode_get_lobby_response(response: GetLobbyResponse) {

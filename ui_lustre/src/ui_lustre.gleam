@@ -1,4 +1,4 @@
-import api/models
+import api/models.{type GetLobbyResponse}
 import gleam/dynamic/decode
 import gleam/http
 import gleam/http/request
@@ -8,12 +8,14 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string
+import gleam/uri
 import lustre
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre/element/keyed
+import modem
 
 import lustre/event
 import rsvp
@@ -22,7 +24,7 @@ import rsvp
 
 pub fn main() {
   let create_lobby = CreateLobbyModel(name: "Lobby Name", seats: [])
-  let model = Model(active_lobby: None, create_lobby:)
+  let model = Model(route: Index, active_lobby: None, create_lobby:)
 
   let app = lustre.application(init, update, view)
   let assert Ok(_) = lustre.start(app, "#app", model)
@@ -33,7 +35,11 @@ pub fn main() {
 // MODEL -----------------------------------------------------------------------
 
 type Model {
-  Model(active_lobby: Option(Lobby), create_lobby: CreateLobbyModel)
+  Model(
+    route: Route,
+    active_lobby: Option(Lobby),
+    create_lobby: CreateLobbyModel,
+  )
 }
 
 type Lobby {
@@ -45,19 +51,48 @@ type CreateLobbyModel {
 }
 
 fn init(model: Model) -> #(Model, Effect(Msg)) {
-  // Calling the `tick` effect immediately on init kicks off our clock!
-  #(model, effect.none())
+  echo "init"
+  let initial_route =
+    modem.initial_uri()
+    |> result.map(router)
+    |> result.unwrap(model.route)
+
+  let initial_effects =
+    effect.batch([
+      modem.init(on_route_change),
+      load_route_data(model, initial_route),
+    ])
+  #(Model(..model, route: initial_route), initial_effects)
+}
+
+fn on_route_change(uri: uri.Uri) -> Msg {
+  router(uri) |> RouteChanged
+}
+
+fn router(uri: uri.Uri) -> Route {
+  case uri.path_segments(uri.path) {
+    ["lobby", lobby_id] -> GameRoom(lobby_id)
+    _ -> Index
+  }
 }
 
 // UPDATE ----------------------------------------------------------------------
 
+type Route {
+  Index
+  GameRoom(String)
+}
+
 type Msg {
+  RouteChanged(Route)
+  UserClickedLink(String)
   UserClickedAddClock
   UserClickedPrintState
   UserClickedCreateLobby
   UserChangedSeatName(Int, String)
   UserChangedSeatInitialSeconds(Int, String)
   ApiCreatedLobby(Result(String, rsvp.Error))
+  ApiReturnedLobby(Result(models.GetLobbyResponse, rsvp.Error))
 }
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
@@ -129,11 +164,12 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         Ok(lobby_id) -> {
           let new_model =
             Model(
+              ..model,
               active_lobby: Some(Lobby(
                 id: lobby_id,
                 name: model.create_lobby.name,
               )),
-              create_lobby: CreateLobbyModel("", []),
+              create_lobby: CreateLobbyModel(name: "", seats: []),
             )
 
           #(new_model, effect.none())
@@ -144,16 +180,52 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       let effect = create_lobby(model.create_lobby, ApiCreatedLobby)
       #(model, effect)
     }
+    RouteChanged(route) -> {
+      echo "asdf"
+      let effect = load_route_data(model, route)
+
+      #(Model(..model, route:), effect)
+    }
+    UserClickedLink(path) -> #(model, modem.push(path, None, None))
+    ApiReturnedLobby(resp) -> {
+      case resp {
+        Ok(lobby) -> {
+          let active_lobby = Lobby(id: lobby.id, name: lobby.name) |> Some
+          #(Model(..model, active_lobby:), effect.none())
+        }
+        Error(_) -> {
+          #(model, effect.none())
+        }
+      }
+    }
+  }
+}
+
+fn load_route_data(model: Model, route: Route) -> Effect(Msg) {
+  case route {
+    GameRoom(lobby_id) -> load_room(model, lobby_id)
+    _ -> effect.none()
+  }
+}
+
+fn load_room(model: Model, lobby_id: String) -> Effect(Msg) {
+  let lobby_has_data = model.active_lobby |> option.is_some
+  let lobby_id_matches =
+    model.active_lobby
+    |> option.map(fn(lobby) { lobby.id == lobby_id })
+    |> option.unwrap(False)
+
+  // If we have lobby data, and the route matches, nothing to fetch!
+  case lobby_has_data && lobby_id_matches {
+    True -> effect.none()
+    False -> get_lobby(lobby_id, ApiReturnedLobby)
   }
 }
 
 fn create_lobby(
-  lobby lobby: CreateLobbyModel,
-  on_response handle_response: fn(Result(String, rsvp.Error)) -> msg,
-  // Just like the `Element` type, the `Effect` type is parametrised by the type
-  // of messages it produces. This is how we know messages we get back from an
-  // effect are type-safe and can be handled by the `update` function.
-) -> Effect(msg) {
+  lobby: CreateLobbyModel,
+  handle_response: fn(Result(String, rsvp.Error)) -> Msg,
+) -> Effect(Msg) {
   let url = "http://127.0.0.1:8000/api/v1/lobby"
 
   let lobby_id_decoder = {
@@ -187,9 +259,35 @@ fn create_lobby(
   }
 }
 
+fn get_lobby(
+  lobby_id: String,
+  handle_response: fn(Result(GetLobbyResponse, rsvp.Error)) -> Msg,
+) -> Effect(Msg) {
+  let url = "http://127.0.0.1:8000/api/v1/lobby/" <> lobby_id
+
+  let handler =
+    rsvp.expect_json(models.get_lobby_response_decoder(), handle_response)
+
+  case request.to(url) {
+    Ok(request) ->
+      request
+      |> request.set_method(http.Get)
+      |> rsvp.send(handler)
+
+    Error(_) -> panic as { "Failed to create request to " <> url }
+  }
+}
+
 // VIEW ------------------------------------------------------------------------
 
 fn view(model: Model) -> Element(Msg) {
+  case model.route {
+    GameRoom(lobby_id) -> view_game_room(model, lobby_id)
+    Index -> view_index(model)
+  }
+}
+
+fn view_index(model: Model) -> Element(Msg) {
   let current_id = case model.active_lobby {
     None -> "None"
     Some(l) -> l.id
@@ -198,7 +296,18 @@ fn view(model: Model) -> Element(Msg) {
   html.div(
     [attribute.class("w-screen h-screen flex justify-center items-center")],
     [
-      html.div([], [html.p([], [html.text("Current Lobby ID: " <> current_id)])]),
+      html.div([], [
+        html.p([], [
+          html.text("Current Lobby ID: " <> current_id),
+          html.button(
+            [
+              event.on_click(UserClickedLink("/lobby/" <> current_id)),
+              attribute.disabled(model.active_lobby |> option.is_none),
+            ],
+            [html.text("Join the room!")],
+          ),
+        ]),
+      ]),
       html.text("Hia :) Lets build you a lobby!"),
       html.button([event.on_click(UserClickedAddClock)], [
         html.text("Add a seat"),
@@ -229,5 +338,26 @@ fn view(model: Model) -> Element(Msg) {
         html.text("Create Lobby!"),
       ]),
     ],
+  )
+}
+
+fn view_game_room(model: Model, lobby_id: String) -> Element(Msg) {
+  case model.active_lobby {
+    None -> view_loading_game_room(model)
+    Some(lobby) -> view_active_game_room(lobby)
+  }
+}
+
+fn view_active_game_room(model: Lobby) -> Element(Msg) {
+  html.div(
+    [attribute.class("w-screen h-screen flex justify-center items-center")],
+    [html.p([], [html.text("Name: "), html.text(model.name)])],
+  )
+}
+
+fn view_loading_game_room(model: Model) -> Element(Msg) {
+  html.div(
+    [attribute.class("w-screen h-screen flex justify-center items-center")],
+    [html.p([], [html.text("Waiting on your room :)")])],
   )
 }

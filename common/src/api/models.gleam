@@ -1,5 +1,6 @@
 import gleam/dynamic/decode
 import gleam/float
+import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{type Option}
@@ -78,12 +79,55 @@ pub type LobbyClock {
   LobbyClock(remaining_duration: Duration, ends_at: Option(Timestamp))
 }
 
+pub fn lobby_clock_decoder() -> decode.Decoder(LobbyClock) {
+  use float_duration <- decode.field("remaining_duration", decode.float)
+  use float_ends_at <- decode.field("ends_at", decode.optional(decode.float))
+
+  let remaining_duration =
+    float_duration
+    |> float.multiply(1000.0)
+    |> float.truncate
+    |> duration.milliseconds
+
+  // The timestamp is sent as unix timestamp in seconds. With 3 digits of precision
+  // We want to ultimately get a timestamp at that exact time
+  let ends_at =
+    float_ends_at
+    // First convert the seconds into milliseconds
+    |> option.map(float.multiply(_, 1000.0))
+    // Then truncate any remaining decimals (There shouldnt be any)
+    |> option.map(float.truncate)
+    // And finally, get the timestamp
+    |> option.map(fn(ends_at_millies) {
+      let seconds = ends_at_millies / 1000
+      let nanosecs = int.multiply(ends_at_millies % 1000, 1_000_000)
+
+      timestamp.from_unix_seconds_and_nanoseconds(seconds, nanosecs)
+    })
+
+  decode.success(LobbyClock(remaining_duration:, ends_at:))
+}
+
 pub type LobbySeat {
   LobbySeat(id: String, name: Option(String), clock: LobbyClock)
 }
 
+pub fn lobby_seat_decoder() -> decode.Decoder(LobbySeat) {
+  use id <- decode.field("id", decode.string)
+  use name <- decode.field("name", decode.optional(decode.string))
+  use clock <- decode.field("clock", lobby_clock_decoder())
+  decode.success(LobbySeat(id:, name:, clock:))
+}
+
 pub type GetLobbyResponse {
   GetLobbyResponse(id: String, name: String, seats: List(LobbySeat))
+}
+
+pub fn get_lobby_response_decoder() -> decode.Decoder(GetLobbyResponse) {
+  use id <- decode.field("id", decode.string)
+  use name <- decode.field("name", decode.string)
+  use seats <- decode.field("seats", decode.list(lobby_seat_decoder()))
+  decode.success(GetLobbyResponse(id:, name:, seats:))
 }
 
 pub fn encode_get_lobby_response(response: GetLobbyResponse) {

@@ -18,7 +18,7 @@ jobs:
       - uses: workflow/nix-shell-action@v3
         with:
           packages: python312Packages.openapi-spec-validator
-          script: openapi-spec-validator openapi.yml
+          script: openapi-spec-validator backend/openapi.yml
 
       # Validate the flake can build, and check formatting
       - run: nix flake check

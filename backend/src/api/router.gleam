@@ -129,7 +129,7 @@ fn get_lobby(req, lobby_id, ctx: Context) {
   |> wisp.json_body(json_str)
 }
 
-/// Advances the lobby. Only works if the seat_id resonsible is currently in a position to advance the table. IE, is the current active seat
+/// Advances the lobby. Only works if the seat_id responsible is currently in a position to advance the table. IE, is the current active seat
 fn advance_lobby(req, lobby_id, seat_id, ctx) {
   use <- wisp.require_method(req, Post)
   use lobby <- require_lobby(lobby_id, ctx)

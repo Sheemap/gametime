@@ -293,52 +293,53 @@ fn view_index(model: Model) -> Element(Msg) {
     Some(l) -> l.id
   }
 
-  html.div(
-    [attribute.class("w-screen h-screen flex justify-center items-center")],
-    [
-      html.div([], [
-        html.p([], [
-          html.text("Current Lobby ID: " <> current_id),
-          html.button(
-            [
-              event.on_click(UserClickedLink("/lobby/" <> current_id)),
-              attribute.disabled(model.active_lobby |> option.is_none),
-            ],
-            [html.text("Join the room!")],
-          ),
-        ]),
+  html.div([attribute.class("w-screen h-screen justify-center items-center")], [
+    html.div([], [
+      html.p([], [
+        html.text("Current Lobby ID: " <> current_id),
+        html.br([]),
+        html.button(
+          [
+            event.on_click(UserClickedLink("/lobby/" <> current_id)),
+            attribute.disabled(model.active_lobby |> option.is_none),
+          ],
+          [html.text("Join the room!")],
+        ),
       ]),
-      html.text("Hia :) Lets build you a lobby!"),
-      html.button([event.on_click(UserClickedAddClock)], [
-        html.text("Add a seat"),
-      ]),
-      html.button([event.on_click(UserClickedPrintState)], [
-        html.text("Print current"),
-      ]),
-      keyed.ul(
-        [],
-        list.index_map(model.create_lobby.seats, fn(s, i) {
-          #(
-            int.to_string(i),
-            html.div([], [
-              html.input([
-                event.on_change(UserChangedSeatName(i, _)),
-                attribute.value(option.unwrap(s.name, "")),
-              ]),
-              html.input([
-                event.on_change(UserChangedSeatInitialSeconds(i, _)),
-                attribute.type_("number"),
-                attribute.value(s.initial_seconds |> int.to_string),
-              ]),
+    ]),
+    html.text("Hia :) Lets build you a lobby!"),
+    html.br([]),
+    html.br([]),
+    html.button([event.on_click(UserClickedAddClock)], [html.text("Add a seat")]),
+    html.br([]),
+    html.button([event.on_click(UserClickedPrintState)], [
+      html.text("Print current"),
+    ]),
+    html.br([]),
+    html.br([]),
+    keyed.ul(
+      [],
+      list.index_map(model.create_lobby.seats, fn(s, i) {
+        #(
+          int.to_string(i),
+          html.div([], [
+            html.input([
+              event.on_change(UserChangedSeatName(i, _)),
+              attribute.value(option.unwrap(s.name, "")),
             ]),
-          )
-        }),
-      ),
-      html.button([event.on_click(UserClickedCreateLobby)], [
-        html.text("Create Lobby!"),
-      ]),
-    ],
-  )
+            html.input([
+              event.on_change(UserChangedSeatInitialSeconds(i, _)),
+              attribute.type_("number"),
+              attribute.value(s.initial_seconds |> int.to_string),
+            ]),
+          ]),
+        )
+      }),
+    ),
+    html.button([event.on_click(UserClickedCreateLobby)], [
+      html.text("Create Lobby!"),
+    ]),
+  ])
 }
 
 fn view_game_room(model: Model, lobby_id: String) -> Element(Msg) {

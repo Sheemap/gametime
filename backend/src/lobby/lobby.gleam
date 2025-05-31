@@ -76,7 +76,7 @@ fn update_lobby(
       }
     })
 
-  #(Lobby(lobby.id, lobby.name, seats: new_seats), seat_updates)
+  #(Lobby(lobby.id, lobby.name, seats: list.reverse(new_seats)), seat_updates)
 }
 
 fn require_inactive_seats(lobby: Lobby, callback) {
@@ -202,10 +202,10 @@ fn can_advance_clockwise(lobby: Lobby, seat_id: String) {
 }
 
 /// Figure out next clock index. If it goes over length, wrap around to 0
-fn wrap_index(desired, length) {
-  case desired > length {
+fn wrap_index(desired_index, length) {
+  case desired_index > length - 1 {
     True -> 0
-    False -> desired
+    False -> desired_index
   }
 }
 

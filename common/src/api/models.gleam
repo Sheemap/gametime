@@ -120,15 +120,20 @@ pub fn lobby_seat_decoder() -> decode.Decoder(LobbySeat) {
 }
 
 pub type GetLobbyResponse {
-  GetLobbyResponse(id: String, name: String, seats: List(LobbySeat))
+  GetLobbyResponse(
+    id: String,
+    name: String,
+    seats: List(LobbySeat),
+    next_up: List(String),
+  )
 }
 
-pub fn get_lobby_response_decoder() -> decode.Decoder(GetLobbyResponse) {
-  use id <- decode.field("id", decode.string)
-  use name <- decode.field("name", decode.string)
-  use seats <- decode.field("seats", decode.list(lobby_seat_decoder()))
-  decode.success(GetLobbyResponse(id:, name:, seats:))
-}
+// pub fn get_lobby_response_decoder() -> decode.Decoder(GetLobbyResponse) {
+//   use id <- decode.field("id", decode.string)
+//   use name <- decode.field("name", decode.string)
+//   use seats <- decode.field("seats", decode.list(lobby_seat_decoder()))
+//   decode.success(GetLobbyResponse(id:, name:, seats:))
+// }
 
 pub fn encode_get_lobby_response(response: GetLobbyResponse) {
   let seats = {
@@ -163,5 +168,6 @@ pub fn encode_get_lobby_response(response: GetLobbyResponse) {
     #("id", json.string(response.id)),
     #("name", json.string(response.name)),
     #("seats", json.preprocessed_array(seats)),
+    #("next_up", json.array(response.next_up, json.string)),
   ])
 }

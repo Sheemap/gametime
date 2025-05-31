@@ -263,5 +263,6 @@ fn map_lobby_to_response(lobby: lobby.Lobby) -> models.GetLobbyResponse {
       |> models.LobbySeat(id: s.id, name: s.name, clock: _)
     })
 
-  models.GetLobbyResponse(id: lobby.id, name: lobby.name, seats:)
+  let next_up = lobby.next_up(lobby)
+  models.GetLobbyResponse(id: lobby.id, name: lobby.name, seats:, next_up:)
 }

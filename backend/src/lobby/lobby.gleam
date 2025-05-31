@@ -92,6 +92,23 @@ fn require_inactive_seats(lobby: Lobby, callback) {
   }
 }
 
+pub fn next_up(lobby: Lobby) -> List(String) {
+  case advance(lobby) {
+    Error(_) -> []
+    Ok(#(_, new_events)) -> {
+      new_events
+      |> list.filter(fn(se) {
+        case se.event {
+          clock.Add(_, _) -> False
+          clock.Start(_) -> True
+          clock.Stop(_) -> False
+        }
+      })
+      |> list.map(fn(se) { se.seat_id })
+    }
+  }
+}
+
 pub type AdvanceLobbyError {
   NoActiveSeat
   MultipleActiveSeats

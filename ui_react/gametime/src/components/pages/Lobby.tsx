@@ -4,7 +4,6 @@ import { Button } from "../ui/button";
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -15,6 +14,7 @@ import { Dialog, DialogTrigger } from "@radix-ui/react-dialog";
 import { DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { CircleHelpIcon } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 type Seat = {
   name: string;
@@ -28,8 +28,11 @@ export default function () {
   const [roomName, setRoomName] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPlayerIndex, setEditingPlayerIndex] = useState<number | null>(null);
+  // We store dialogMode as a separate value from the editingPlayerIndex to prevent UI glitch on closing the modal
   const [dialogMode, setDialogMode] = useState<'add' | 'edit'>('add');
   const [dialogFormKey, setDialogFormKey] = useState(0); // Force form reset
+  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
+  const navigate = useNavigate();
 
   const handleAddPlayer = () => {
     setEditingPlayerIndex(null);
@@ -78,6 +81,49 @@ export default function () {
       }
 
       form.reset();
+    }
+  };
+
+  const handleCreateGameRoom = async () => {
+    if (!roomName || players.length === 0) return;
+
+    setIsCreatingRoom(true);
+    
+    try {
+      const requestBody = {
+        name: roomName,
+        seats: players.map(player => ({
+          name: player.name,
+          initial_seconds: (player.initial_hours * 3600) + (player.initial_minutes * 60) + player.initial_seconds
+        }))
+      };
+
+      const response = await fetch('/api/v1/lobby', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.lobby_id) {
+        console.log('Navigating to game room', data.lobby_id)
+        navigate(`/room/${data.lobby_id}`);
+      } else {
+        throw new Error('No lobby_id received from server');
+      }
+    } catch (error) {
+      console.error('Failed to create game room:', error);
+      // TODO: Make a prettier error message UI
+      alert('Failed to create game room. Please try again.');
+    } finally {
+      setIsCreatingRoom(false);
     }
   };
 
@@ -189,7 +235,9 @@ export default function () {
         />
       )}
       {players.length > 0 && roomName !== "" && (
-        <Button>Create Game Room</Button>
+        <Button onClick={handleCreateGameRoom} disabled={isCreatingRoom}>
+          {isCreatingRoom ? "Creating..." : "Create Game Room"}
+        </Button>
       )}
     </div>
   );
@@ -206,7 +254,6 @@ function PlayerTable({
 }) {
   return (
     <Table>
-      <TableCaption>All players in your room</TableCaption>
       <TableHeader>
         <TableRow>
           <TableHead>Player Name</TableHead>

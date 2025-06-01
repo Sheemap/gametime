@@ -3,7 +3,9 @@ import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import {
   Table,
+  TableBody,
   TableCaption,
+  TableCell,
   TableHead,
   TableHeader,
   TableRow,
@@ -11,9 +13,11 @@ import {
 import { useState } from "react";
 import { Dialog, DialogTrigger } from "@radix-ui/react-dialog";
 import { DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
-
+// API expects seconds but for the ease of logic for editing user time, just keep them separate until time to call API
 type Seat = {
   name: string;
+  initial_hours: number;
+  initial_minutes: number;
   initial_seconds: number;
 };
 
@@ -35,7 +39,40 @@ export default function () {
           </DialogHeader>
           <form
             className="grid gap-4"
-            // onSubmit logic to be added later
+            onSubmit={(e) => {
+              e.preventDefault();
+              const form = e.currentTarget;
+              const nameInput = form.elements.namedItem(
+                "name"
+              ) as HTMLInputElement;
+              const hoursInput = form.elements.namedItem(
+                "hours"
+              ) as HTMLInputElement;
+              const minutesInput = form.elements.namedItem(
+                "minutes"
+              ) as HTMLInputElement;
+              const secondsInput = form.elements.namedItem(
+                "seconds"
+              ) as HTMLInputElement;
+
+              if (
+                nameInput.value &&
+                hoursInput.value &&
+                minutesInput.value &&
+                secondsInput.value
+              ) {
+                setPlayers([
+                  ...players,
+                  {
+                    name: nameInput.value,
+                    initial_hours: parseInt(hoursInput.value),
+                    initial_minutes: parseInt(minutesInput.value),
+                    initial_seconds: parseInt(secondsInput.value),
+                  },
+                ]);
+                form.reset();
+              }
+            }}
           >
             <div className="grid gap-3">
               <Label htmlFor="name-1">Name</Label>
@@ -87,49 +124,7 @@ export default function () {
                 />
               </div>
             </div>
-            <Button
-              type="submit"
-              className="mt-4"
-              onClick={(e) => {
-                e.preventDefault();
-                const form = e.currentTarget.form;
-                if (form) {
-                  const nameInput = form.elements.namedItem(
-                    "name"
-                  ) as HTMLInputElement;
-                  const hoursInput = form.elements.namedItem(
-                    "hours"
-                  ) as HTMLInputElement;
-                  const minutesInput = form.elements.namedItem(
-                    "minutes"
-                  ) as HTMLInputElement;
-                  const secondsInput = form.elements.namedItem(
-                    "seconds"
-                  ) as HTMLInputElement;
-
-                  if (
-                    nameInput.value &&
-                    hoursInput.value &&
-                    minutesInput.value &&
-                    secondsInput.value
-                  ) {
-                    const totalSeconds =
-                      parseInt(hoursInput.value) * 3600 +
-                      parseInt(minutesInput.value) * 60 +
-                      parseInt(secondsInput.value);
-
-                    setPlayers([
-                      ...players,
-                      {
-                        name: nameInput.value,
-                        initial_seconds: totalSeconds,
-                      },
-                    ]);
-                    form.reset();
-                  }
-                }
-              }}
-            >
+            <Button type="submit" className="mt-4">
               Add Player
             </Button>
           </form>
@@ -151,15 +146,24 @@ function PlayerTable({ players }: { players: Seat[] }) {
           <TableHead>Player Controls</TableHead>
         </TableRow>
       </TableHeader>
-      <tbody>
+      <TableBody>
         {players.map((player, idx) => (
           <TableRow key={idx}>
-            <TableHead>{player.name}</TableHead>
-            <TableHead>{player.initial_seconds}</TableHead>
-            <TableHead><Button>Edit</Button><Button variant="destructive">Delete</Button></TableHead>
+            <TableCell>{player.name}</TableCell>
+            <TableCell>{`${player.initial_hours
+              .toString()
+              .padStart(2, "0")}:${player.initial_minutes
+              .toString()
+              .padStart(2, "0")}:${player.initial_seconds
+              .toString()
+              .padStart(2, "0")}`}</TableCell>
+            <TableCell>
+              <Button className="mr-2">Edit</Button>
+              <Button variant="destructive">Delete</Button>
+            </TableCell>
           </TableRow>
         ))}
-      </tbody>
+      </TableBody>
     </Table>
   );
 }

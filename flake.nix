@@ -37,8 +37,9 @@
             gleam
             beam27Packages.erlang
             rebar3
-            inotify-tools
+            # inotify-tools
             redocly-cli
+            nodejs_22
           ];
         };
 

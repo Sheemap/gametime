@@ -23,12 +23,19 @@ type Seat = {
 
 export default function () {
   const [players, setPlayers] = useState<Seat[]>([]);
+  const [roomName, setRoomName] = useState("");
 
   return (
     <div className="p-20">
       <h1 className="text-3xl my-2">Create a room</h1>
       <Label htmlFor="roomName">Room Name</Label>
-      <Input id="roomName" type="text" placeholder="Name" />
+      <Input
+        id="roomName"
+        type="text"
+        placeholder="Name"
+        value={roomName}
+        onChange={(e) => setRoomName(e.target.value)}
+      />
       <Dialog>
         <DialogTrigger asChild>
           <Button className="my-4">Add a player</Button>
@@ -131,6 +138,9 @@ export default function () {
         </DialogContent>
       </Dialog>
       {players.length > 0 && <PlayerTable players={players} />}
+      {players.length > 0 && roomName != "" && (
+        <Button>Create Game Room</Button>
+      )}
     </div>
   );
 }

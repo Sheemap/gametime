@@ -24,32 +24,33 @@ type Seat = {
 };
 
 export default function () {
-  const [players, setPlayers] = useState<Seat[]>([]);
+  const [seats, setSeats] = useState<Seat[]>([]);
   const [roomName, setRoomName] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingPlayerIndex, setEditingPlayerIndex] = useState<number | null>(null);
-  // We store dialogMode as a separate value from the editingPlayerIndex to prevent UI glitch on closing the modal
+  // Used for the modal when we are editing an existing Seat instead of adding a new one
+  const [editingSeatIndex, setEditingSeatIndex] = useState<number | null>(null);
+  // We store dialogMode as a separate value from the editingPlayerIndex to prevent UI glitch during the closing animation of the modal after submitting the update to the Seat
   const [dialogMode, setDialogMode] = useState<'add' | 'edit'>('add');
   const [dialogFormKey, setDialogFormKey] = useState(0); // Force form reset
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const navigate = useNavigate();
 
   const handleAddPlayer = () => {
-    setEditingPlayerIndex(null);
+    setEditingSeatIndex(null);
     setDialogMode('add');
     setDialogFormKey(prev => prev + 1);
     setIsDialogOpen(true);
   };
 
   const handleEditPlayer = (index: number) => {
-    setEditingPlayerIndex(index);
+    setEditingSeatIndex(index);
     setDialogMode('edit');
     setDialogFormKey(prev => prev + 1);
     setIsDialogOpen(true);
   };
 
   const handleDeletePlayer = (index: number) => {
-    setPlayers(players.filter((_, i) => i !== index));
+    setSeats(seats.filter((_, i) => i !== index));
   };
 
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -68,16 +69,16 @@ export default function () {
         initial_seconds: parseInt(secondsInput.value),
       };
 
-      if (editingPlayerIndex !== null) {
+      if (editingSeatIndex !== null) {
         // Edit existing player - close dialog after update
-        const updatedPlayers = [...players];
-        updatedPlayers[editingPlayerIndex] = newPlayer;
-        setPlayers(updatedPlayers);
+        const updatedPlayers = [...seats];
+        updatedPlayers[editingSeatIndex] = newPlayer;
+        setSeats(updatedPlayers);
         setIsDialogOpen(false);
-        setEditingPlayerIndex(null);
+        setEditingSeatIndex(null);
       } else {
         // Add new player - keep dialog open for adding more players
-        setPlayers([...players, newPlayer]);
+        setSeats([...seats, newPlayer]);
       }
 
       form.reset();
@@ -85,14 +86,14 @@ export default function () {
   };
 
   const handleCreateGameRoom = async () => {
-    if (!roomName || players.length === 0) return;
+    if (!roomName || seats.length === 0) return;
 
     setIsCreatingRoom(true);
     
     try {
       const requestBody = {
         name: roomName,
-        seats: players.map(player => ({
+        seats: seats.map(player => ({
           name: player.name,
           initial_seconds: (player.initial_hours * 3600) + (player.initial_minutes * 60) + player.initial_seconds
         }))
@@ -127,7 +128,7 @@ export default function () {
     }
   };
 
-  const currentPlayer = editingPlayerIndex !== null ? players[editingPlayerIndex] : null;
+  const currentPlayer = editingSeatIndex !== null ? seats[editingSeatIndex] : null;
 
   return (
     <div className="p-20">
@@ -227,14 +228,14 @@ export default function () {
         </DialogContent>
       </Dialog>
       
-      {players.length > 0 && (
+      {seats.length > 0 && (
         <PlayerTable 
-          players={players} 
+          players={seats} 
           onEditPlayer={handleEditPlayer}
           onDeletePlayer={handleDeletePlayer}
         />
       )}
-      {players.length > 0 && roomName !== "" && (
+      {seats.length > 0 && roomName !== "" && (
         <Button onClick={handleCreateGameRoom} disabled={isCreatingRoom}>
           {isCreatingRoom ? "Creating..." : "Create Game Room"}
         </Button>

@@ -8,6 +8,7 @@
     inputs.systems.follows = "systems";
   };
   inputs.treefmt-nix.url = "github:numtide/treefmt-nix";
+  inputs.nix-gleam.url = "github:arnarg/nix-gleam";
 
   outputs =
     {
@@ -15,16 +16,30 @@
       nixpkgs,
       flake-utils,
       treefmt-nix,
+      nix-gleam,
       ...
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
       let
-        pkgs = nixpkgs.legacyPackages.${system};
+        pkgs = import nixpkgs {
+          inherit system;
+          overlays = [
+            nix-gleam.overlays.default
+          ];
+        };
         treefmtEval = treefmt-nix.lib.evalModule pkgs ./treefmt.nix;
       in
       {
         packages = {
+          backend = pkgs.buildGleamApplication {
+            src = ./backend;
+            localPackages = [ ./common ];
+            rebar3Package = pkgs.rebar3WithPlugins {
+              plugins = with pkgs.beamPackages; [ pc ];
+            };
+          };
+
           ci_checks = pkgs.writeShellApplication {
             name = "ci_checks";
             runtimeInputs = [ pkgs.python313Packages.openapi-spec-validator ];

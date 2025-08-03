@@ -1,5 +1,5 @@
 {
-  description = "A basic flake with a shell";
+  description = "Gametime nix flake";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
   inputs.systems.url = "github:nix-systems/default";

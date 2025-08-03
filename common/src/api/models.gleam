@@ -128,12 +128,13 @@ pub type GetLobbyResponse {
   )
 }
 
-// pub fn get_lobby_response_decoder() -> decode.Decoder(GetLobbyResponse) {
-//   use id <- decode.field("id", decode.string)
-//   use name <- decode.field("name", decode.string)
-//   use seats <- decode.field("seats", decode.list(lobby_seat_decoder()))
-//   decode.success(GetLobbyResponse(id:, name:, seats:))
-// }
+pub fn get_lobby_response_decoder() -> decode.Decoder(GetLobbyResponse) {
+  use id <- decode.field("id", decode.string)
+  use name <- decode.field("name", decode.string)
+  use seats <- decode.field("seats", decode.list(lobby_seat_decoder()))
+  use next_up <- decode.field("next_up", decode.list(decode.string))
+  decode.success(GetLobbyResponse(id:, name:, seats:, next_up:))
+}
 
 pub fn encode_get_lobby_response(response: GetLobbyResponse) {
   let seats = {

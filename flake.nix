@@ -29,9 +29,12 @@
           ];
         };
         treefmtEval = treefmt-nix.lib.evalModule pkgs ./treefmt.nix;
+
       in
       {
+
         packages = {
+          # run with `nix run .#backend`
           backend = pkgs.buildGleamApplication {
             src = ./backend;
             localPackages = [ ./common ];
@@ -40,6 +43,7 @@
             };
           };
 
+          # run with `nix run .#ci_checks`
           ci_checks = pkgs.writeShellApplication {
             name = "ci_checks";
             runtimeInputs = [ pkgs.python313Packages.openapi-spec-validator ];
@@ -47,6 +51,7 @@
           };
         };
 
+        # activate the devshell with `nix develop`
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
             gleam
